@@ -19,16 +19,16 @@ package org.apache.ignite.internal.processors.query.calcite.metadata;
 import com.google.common.collect.ImmutableList;
 import org.apache.calcite.util.Pair;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
-import org.apache.ignite.internal.processors.query.calcite.splitter.Source;
+import org.apache.ignite.internal.processors.query.calcite.splitter.RelSource;
 
 /**
  *
  */
 public class FragmentInfo {
     private final NodesMapping mapping;
-    private final ImmutableList<Pair<IgniteReceiver, Source>> sources;
+    private final ImmutableList<Pair<IgniteReceiver, RelSource>> sources;
 
-    public FragmentInfo(Pair<IgniteReceiver, Source> source) {
+    public FragmentInfo(Pair<IgniteReceiver, RelSource> source) {
         this(ImmutableList.of(source), null);
     }
 
@@ -36,7 +36,7 @@ public class FragmentInfo {
         this(null, mapping);
     }
 
-    public FragmentInfo(ImmutableList<Pair<IgniteReceiver, Source>> sources, NodesMapping mapping) {
+    public FragmentInfo(ImmutableList<Pair<IgniteReceiver, RelSource>> sources, NodesMapping mapping) {
         this.sources = sources;
         this.mapping = mapping;
     }
@@ -45,7 +45,7 @@ public class FragmentInfo {
         return mapping;
     }
 
-    public ImmutableList<Pair<IgniteReceiver, Source>> sources() {
+    public ImmutableList<Pair<IgniteReceiver, RelSource>> sources() {
         return sources;
     }
 

@@ -18,17 +18,17 @@ package org.apache.ignite.internal.processors.query.calcite.splitter;
 
 import java.io.Serializable;
 import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
+import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 
 /**
  *
  */
-public class TargetImpl implements Target, Serializable {
+public class RelTargetImpl implements RelTarget, Serializable {
     private final long exchangeId;
     private final NodesMapping mapping;
-    private final DistributionTrait distribution;
+    private final IgniteDistribution distribution;
 
-    public TargetImpl(long exchangeId, NodesMapping mapping, DistributionTrait distribution) {
+    public RelTargetImpl(long exchangeId, NodesMapping mapping, IgniteDistribution distribution) {
         this.exchangeId = exchangeId;
         this.mapping = mapping;
         this.distribution = distribution;
@@ -42,7 +42,7 @@ public class TargetImpl implements Target, Serializable {
         return mapping;
     }
 
-    @Override public DistributionTrait distribution() {
+    @Override public IgniteDistribution distribution() {
         return distribution;
     }
 }

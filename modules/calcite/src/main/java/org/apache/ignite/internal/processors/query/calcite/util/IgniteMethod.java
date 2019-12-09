@@ -19,14 +19,14 @@ package org.apache.ignite.internal.processors.query.calcite.util;
 
 import java.lang.reflect.Method;
 import org.apache.calcite.linq4j.tree.Types;
-import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMetadata.DistributionTraitMetadata;
+import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMetadata.DerivedDistribution;
 import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMetadata.FragmentMetadata;
 
 /**
  *
  */
 public enum IgniteMethod {
-    DISTRIBUTION_TRAIT(DistributionTraitMetadata.class, "getDistributionTrait"),
+    DERIVED_DISTRIBUTIONS(DerivedDistribution.class, "deriveDistributions"),
     FRAGMENT_INFO(FragmentMetadata.class, "getFragmentInfo");
 
     private final Method method;

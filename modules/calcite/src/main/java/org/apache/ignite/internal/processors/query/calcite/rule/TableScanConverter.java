@@ -14,31 +14,28 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.query.calcite.serialize.relation;
+package org.apache.ignite.internal.processors.query.calcite.rule;
 
-import java.util.List;
+import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.convert.ConverterRule;
+import org.apache.calcite.rel.logical.LogicalTableScan;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteTableScan;
 
 /**
  *
  */
-public class TableScanNode extends RelGraphNode {
-    private final List<String> tableName;
-
-    private TableScanNode(RelTraitSet traits, List<String> tableName) {
-        super(traits);
-        this.tableName = tableName;
+public class TableScanConverter extends ConverterRule {
+    public TableScanConverter() {
+        super(LogicalTableScan.class, Convention.NONE, IgniteConvention.INSTANCE, "TableScanConverter");
     }
 
-    public static TableScanNode create(IgniteTableScan rel) {
-        return new TableScanNode(rel.getTraitSet(), rel.getTable().getQualifiedName());
-    }
+    @Override public RelNode convert(RelNode rel) {
+        LogicalTableScan scan = (LogicalTableScan) rel;
 
-    @Override public RelNode toRel(ConversionContext ctx, List<RelNode> children) {
-        return new IgniteTableScan(ctx.getCluster(),
-            traitSet.toTraitSet(ctx.getCluster()),
-            ctx.getSchema().getTableForMember(tableName));
+        RelTraitSet traitSet = scan.getTraitSet().replace(IgniteConvention.INSTANCE);
+        return new IgniteTableScan(rel.getCluster(), traitSet, scan.getTable());
     }
 }

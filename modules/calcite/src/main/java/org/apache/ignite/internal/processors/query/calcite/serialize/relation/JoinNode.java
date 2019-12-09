@@ -34,22 +34,19 @@ public class JoinNode extends RelGraphNode {
     private final Expression condition;
     private final int[] variables;
     private final JoinRelType joinType;
-    private final boolean semiDone;
 
-    private JoinNode(RelTraitSet traits, Expression condition, int[] variables, JoinRelType joinType, boolean semiDone) {
+    private JoinNode(RelTraitSet traits, Expression condition, int[] variables, JoinRelType joinType) {
         super(traits);
         this.condition = condition;
         this.variables = variables;
         this.joinType = joinType;
-        this.semiDone = semiDone;
     }
 
     public static JoinNode create(IgniteJoin rel, RexToExpTranslator expTranslator) {
         return new JoinNode(rel.getTraitSet(),
             expTranslator.translate(rel.getCondition()),
             rel.getVariablesSet().stream().mapToInt(CorrelationId::getId).toArray(),
-            rel.getJoinType(),
-            rel.isSemiJoinDone());
+            rel.getJoinType());
     }
 
     @Override public RelNode toRel(ConversionContext ctx, List<RelNode> children) {
@@ -64,7 +61,6 @@ public class JoinNode extends RelGraphNode {
             right,
             ctx.getExpressionTranslator().translate(condition),
             Arrays.stream(variables).mapToObj(CorrelationId::new).collect(Collectors.toSet()),
-            joinType,
-            semiDone);
+            joinType);
     }
 }

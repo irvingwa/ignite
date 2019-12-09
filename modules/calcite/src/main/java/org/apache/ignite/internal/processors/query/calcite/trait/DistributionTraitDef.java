@@ -16,42 +16,51 @@
 
 package org.apache.ignite.internal.processors.query.calcite.trait;
 
+import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptPlanner;
 import org.apache.calcite.plan.RelTraitDef;
+import org.apache.calcite.plan.RelTraitSet;
+import org.apache.calcite.rel.RelDistribution;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.Exchange;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteExchange;
-import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
 
 /**
  *
  */
-public class DistributionTraitDef extends RelTraitDef<DistributionTrait> {
+public class DistributionTraitDef extends RelTraitDef<IgniteDistribution> {
     /** */
     public static final DistributionTraitDef INSTANCE = new DistributionTraitDef();
 
-    @Override public Class<DistributionTrait> getTraitClass() {
-        return DistributionTrait.class;
+    @Override public Class<IgniteDistribution> getTraitClass() {
+        return IgniteDistribution.class;
     }
 
     @Override public String getSimpleName() {
         return "distr";
     }
 
-    @Override public RelNode convert(RelOptPlanner planner, RelNode rel, DistributionTrait targetDist, boolean allowInfiniteCostConverters) {
-        DistributionTrait srcDist = rel.getTraitSet().getTrait(INSTANCE);
-
-        // Source and Target have the same trait.
-        if (srcDist.equals(targetDist))
-            return rel;
-
-        if (rel.getConvention() != IgniteRel.IGNITE_CONVENTION)
+    @Override public RelNode convert(RelOptPlanner planner, RelNode rel, IgniteDistribution targetDist, boolean allowInfiniteCostConverters) {
+        if (rel.getConvention() == Convention.NONE)
             return null;
 
-        switch(targetDist.type()){
-            case HASH:
-            case BROADCAST:
-            case SINGLE:
-                return new IgniteExchange(rel.getCluster(), rel.getTraitSet().replace(targetDist), rel);
+        RelDistribution srcDist = rel.getTraitSet().getTrait(INSTANCE);
+
+        if (srcDist == targetDist) // has to be interned
+            return rel;
+
+        switch(targetDist.getType()){
+            case HASH_DISTRIBUTED:
+            case BROADCAST_DISTRIBUTED:
+            case SINGLETON:
+                Exchange exchange = new IgniteExchange(rel.getCluster(), rel.getTraitSet().replace(targetDist), rel, targetDist);
+                RelNode newRel = planner.register(exchange, rel);
+                RelTraitSet newTraits = rel.getTraitSet().replace(targetDist);
+
+                if (!newRel.getTraitSet().equals(newTraits))
+                    newRel = planner.changeTraits(newRel, newTraits);
+
+                return newRel;
             case ANY:
                 return rel;
             default:
@@ -59,11 +68,11 @@ public class DistributionTraitDef extends RelTraitDef<DistributionTrait> {
         }
     }
 
-    @Override public boolean canConvert(RelOptPlanner planner, DistributionTrait fromTrait, DistributionTrait toTrait) {
+    @Override public boolean canConvert(RelOptPlanner planner, IgniteDistribution fromTrait, IgniteDistribution toTrait) {
         return true;
     }
 
-    @Override public DistributionTrait getDefault() {
+    @Override public IgniteDistribution getDefault() {
         return IgniteDistributions.any();
     }
 }

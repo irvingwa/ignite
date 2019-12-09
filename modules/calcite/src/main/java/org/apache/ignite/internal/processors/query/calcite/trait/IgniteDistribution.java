@@ -14,33 +14,15 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.query.calcite.util;
+package org.apache.ignite.internal.processors.query.calcite.trait;
 
-import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.RelDistribution;
+import org.apache.calcite.util.mapping.Mappings;
 
 /**
  *
  */
-public class Edge {
-    private final RelNode parent;
-    private final RelNode child;
-    private final int childIdx;
-
-    public Edge(RelNode parent, RelNode child, int childIdx) {
-        this.parent = parent;
-        this.child = child;
-        this.childIdx = childIdx;
-    }
-
-    public RelNode parent() {
-        return parent;
-    }
-
-    public RelNode child() {
-        return child;
-    }
-
-    public int childIdx() {
-        return childIdx;
-    }
+public interface IgniteDistribution extends RelDistribution {
+    DestinationFunctionFactory destinationFunctionFactory();
+    @Override IgniteDistribution apply(Mappings.TargetMapping mapping);
 }

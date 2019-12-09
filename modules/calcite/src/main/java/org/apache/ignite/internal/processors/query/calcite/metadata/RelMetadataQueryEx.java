@@ -16,7 +16,8 @@
 
 package org.apache.ignite.internal.processors.query.calcite.metadata;
 
-import java.util.Arrays;
+import com.google.common.collect.ImmutableList;
+import java.util.List;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.metadata.JaninoRelMetadataProvider;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
@@ -27,7 +28,7 @@ import org.apache.ignite.internal.processors.query.calcite.rel.IgniteProject;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteSender;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteTableScan;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
+import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -35,22 +36,21 @@ import org.jetbrains.annotations.NotNull;
  */
 public class RelMetadataQueryEx extends RelMetadataQuery {
     private static final RelMetadataQueryEx PROTO = new RelMetadataQueryEx();
-    private static final JaninoRelMetadataProvider PROVIDER = JaninoRelMetadataProvider.of(IgniteMetadata.METADATA_PROVIDER);
+    public static final JaninoRelMetadataProvider PROVIDER = JaninoRelMetadataProvider.of(IgniteMetadata.METADATA_PROVIDER);
 
     static {
-        PROVIDER.register(Arrays.asList(
-            IgniteExchange.class,
-            IgniteFilter.class,
-            IgniteJoin.class,
-            IgniteProject.class,
-            IgniteTableScan.class,
-            IgniteReceiver.class,
-            IgniteSender.class
-        ));
+        PROVIDER.register(ImmutableList.of(
+                IgniteExchange.class,
+                IgniteReceiver.class,
+                IgniteSender.class,
+                IgniteFilter.class,
+                IgniteProject.class,
+                IgniteJoin.class,
+                IgniteTableScan.class));
     }
 
-    private IgniteMetadata.DistributionTraitMetadata.Handler distributionTraitHandler;
     private IgniteMetadata.FragmentMetadata.Handler sourceDistributionHandler;
+    private IgniteMetadata.DerivedDistribution.Handler derivedDistributionsHandler;
 
     @SuppressWarnings("MethodOverridesStaticMethodOfSuperclass")
     public static RelMetadataQueryEx instance() {
@@ -67,22 +67,22 @@ public class RelMetadataQueryEx extends RelMetadataQuery {
     private RelMetadataQueryEx(@NotNull RelMetadataQueryEx parent) {
         super(PROVIDER, parent);
 
-        distributionTraitHandler = parent.distributionTraitHandler;
         sourceDistributionHandler = parent.sourceDistributionHandler;
+        derivedDistributionsHandler = parent.derivedDistributionsHandler;
     }
 
     private RelMetadataQueryEx(@NotNull RelMetadataQuery parent) {
         super(PROVIDER, parent);
 
-        distributionTraitHandler = PROTO.distributionTraitHandler;
         sourceDistributionHandler = PROTO.sourceDistributionHandler;
+        derivedDistributionsHandler = PROTO.derivedDistributionsHandler;
     }
 
     private RelMetadataQueryEx() {
         super(JaninoRelMetadataProvider.DEFAULT, RelMetadataQuery.EMPTY);
 
-        distributionTraitHandler = initialHandler(IgniteMetadata.DistributionTraitMetadata.Handler.class);
         sourceDistributionHandler = initialHandler(IgniteMetadata.FragmentMetadata.Handler.class);
+        derivedDistributionsHandler = initialHandler(IgniteMetadata.DerivedDistribution.Handler.class);
     }
 
     public FragmentInfo getFragmentLocation(RelNode rel) {
@@ -95,12 +95,12 @@ public class RelMetadataQueryEx extends RelMetadataQuery {
         }
     }
 
-    public DistributionTrait getDistributionTrait(RelNode rel) {
+    public List<IgniteDistribution> derivedDistributions(RelNode rel) {
         for (;;) {
             try {
-                return distributionTraitHandler.getDistributionTrait(rel, this);
+                return derivedDistributionsHandler.deriveDistributions(rel, this);
             } catch (JaninoRelMetadataProvider.NoHandler e) {
-                distributionTraitHandler = revise(e.relClass, IgniteMetadata.DistributionTraitMetadata.DEF);
+                derivedDistributionsHandler = revise(e.relClass, IgniteMetadata.DerivedDistribution.DEF);
             }
         }
     }

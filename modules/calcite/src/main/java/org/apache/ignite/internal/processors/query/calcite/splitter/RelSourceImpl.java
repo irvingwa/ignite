@@ -16,32 +16,26 @@
 
 package org.apache.ignite.internal.processors.query.calcite.splitter;
 
-import org.apache.calcite.rel.metadata.RelMetadataQuery;
+import java.io.Serializable;
 import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping;
-import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
 
 /**
  *
  */
-public interface Source {
-    /**
-     * @return Exchange id, has to be unique in scope of query.
-     */
-    long exchangeId();
+public class RelSourceImpl implements RelSource, Serializable {
+    private final long exchangeId;
+    private final NodesMapping mapping;
 
-    /**
-     * @return Source mapping.
-     */
-    NodesMapping mapping();
+    public RelSourceImpl(long exchangeId, NodesMapping mapping) {
+        this.exchangeId = exchangeId;
+        this.mapping = mapping;
+    }
 
-    /**
-     * @param mapping Target mapping.
-     * @param distribution Target distribution.
-     * @param ctx Context.
-     * @param mq Metadata query instance.
-     */
-    default void init(NodesMapping mapping, DistributionTrait distribution, PlannerContext ctx, RelMetadataQuery mq) {
-        // No-op.
+    @Override public long exchangeId() {
+        return exchangeId;
+    }
+
+    @Override public NodesMapping mapping() {
+        return mapping;
     }
 }

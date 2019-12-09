@@ -21,8 +21,8 @@ import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
 import org.apache.ignite.internal.processors.query.calcite.serialize.type.DataType;
-import org.apache.ignite.internal.processors.query.calcite.splitter.Source;
-import org.apache.ignite.internal.processors.query.calcite.splitter.SourceImpl;
+import org.apache.ignite.internal.processors.query.calcite.splitter.RelSource;
+import org.apache.ignite.internal.processors.query.calcite.splitter.RelSourceImpl;
 
 
 /**
@@ -30,16 +30,16 @@ import org.apache.ignite.internal.processors.query.calcite.splitter.SourceImpl;
  */
 public class ReceiverNode extends RelGraphNode {
     private final DataType dataType;
-    private final Source source;
+    private final RelSource source;
 
-    private ReceiverNode(RelTraitSet traits, DataType dataType, Source source) {
+    private ReceiverNode(RelTraitSet traits, DataType dataType, RelSource source) {
         super(traits);
         this.dataType = dataType;
         this.source = source;
     }
 
     public static ReceiverNode create(IgniteReceiver rel) {
-        Source source = new SourceImpl(rel.source().exchangeId(), rel.source().mapping());
+        RelSource source = new RelSourceImpl(rel.source().exchangeId(), rel.source().mapping());
 
         return new ReceiverNode(rel.getTraitSet(), DataType.fromType(rel.getRowType()), source);
     }

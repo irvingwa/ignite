@@ -15,12 +15,15 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.query.calcite.rule;
+package org.apache.ignite.internal.processors.query.calcite.prepare;
 
+import org.apache.calcite.rel.rules.SubQueryRemoveRule;
 import org.apache.calcite.tools.RuleSet;
 import org.apache.calcite.tools.RuleSets;
-import org.apache.ignite.internal.processors.query.calcite.exec.Interpretable;
-import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
+import org.apache.ignite.internal.processors.query.calcite.rule.FilterConverter;
+import org.apache.ignite.internal.processors.query.calcite.rule.JoinConverter;
+import org.apache.ignite.internal.processors.query.calcite.rule.ProjectConverter;
+import org.apache.ignite.internal.processors.query.calcite.rule.TableScanConverter;
 
 /**
  *
@@ -29,21 +32,21 @@ public enum PlannerPhase {
     /** */
     SUBQUERY_REWRITE("Sub-queries rewrites") {
         @Override public RuleSet getRules(PlannerContext ctx) {
-            return RuleSets.ofList(IgniteRules.SUBQUERY_REWRITE_RULES);
+            return RuleSets.ofList(
+                SubQueryRemoveRule.FILTER,
+                SubQueryRemoveRule.PROJECT,
+                SubQueryRemoveRule.JOIN);
         }
     },
 
     /** */
-    LOGICAL("Logical planning") {
+    OPTIMIZATION("Main optimization phase") {
         @Override public RuleSet getRules(PlannerContext ctx) {
-            return RuleSets.ofList(IgniteRules.logicalRules(ctx));
-        }
-    },
-
-    /** */
-    PHYSICAL("Execution tree building") {
-        @Override public RuleSet getRules(PlannerContext ctx) {
-            return RuleSets.ofList(Interpretable.RULES);
+            return RuleSets.ofList(
+                new TableScanConverter(),
+                new JoinConverter(),
+                new ProjectConverter(),
+                new FilterConverter());
         }
     };
 

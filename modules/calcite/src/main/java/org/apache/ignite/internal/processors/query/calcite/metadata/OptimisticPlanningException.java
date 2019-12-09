@@ -16,7 +16,7 @@
 
 package org.apache.ignite.internal.processors.query.calcite.metadata;
 
-import org.apache.ignite.internal.processors.query.calcite.util.Edge;
+import org.apache.ignite.internal.processors.query.calcite.splitter.Edge;
 
 /**
  *

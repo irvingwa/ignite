@@ -35,9 +35,7 @@ import org.apache.ignite.cache.query.FieldsQueryCursor;
 import org.apache.ignite.internal.processors.cache.query.IgniteQueryErrorCode;
 import org.apache.ignite.internal.processors.query.IgniteSQLException;
 import org.apache.ignite.internal.processors.query.calcite.CalciteQueryProcessor;
-import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
-import org.apache.ignite.internal.processors.query.calcite.rule.PlannerPhase;
-import org.apache.ignite.internal.processors.query.calcite.rule.PlannerType;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
 import org.apache.ignite.internal.processors.query.calcite.util.ListFieldsQueryCursor;
 
 /**
@@ -84,11 +82,11 @@ public class DistributedExecution implements QueryExecution {
 
             RelTraitSet desired = rel.getTraitSet()
                 .replace(relRoot.collation)
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(RelDistributions.ANY)
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         } catch (SqlParseException | ValidationException e) {

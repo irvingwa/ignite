@@ -16,37 +16,43 @@
 
 package org.apache.ignite.internal.processors.query.calcite.serialize.relation;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
+import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.core.CorrelationId;
+import org.apache.calcite.rel.metadata.RelMetadataQuery;
+import org.apache.calcite.rex.RexNode;
+import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMdDistribution;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteFilter;
 import org.apache.ignite.internal.processors.query.calcite.serialize.expression.Expression;
 import org.apache.ignite.internal.processors.query.calcite.serialize.expression.RexToExpTranslator;
+import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTraitDef;
 import org.apache.ignite.internal.util.typedef.F;
 
 /**
  *
  */
 public class FilterNode extends RelGraphNode {
-    private final int[] variables;
     private final Expression condition;
 
-    private FilterNode(Expression condition, int[] variables) {
-        this.variables = variables;
+    private FilterNode(Expression condition) {
         this.condition = condition;
     }
 
     public static FilterNode create(IgniteFilter rel, RexToExpTranslator expTranslator) {
-        return new FilterNode(expTranslator.translate(rel.getCondition()),
-            rel.getVariablesSet().stream().mapToInt(CorrelationId::getId).toArray());
+        return new FilterNode(expTranslator.translate(rel.getCondition()));
     }
 
     @Override public RelNode toRel(ConversionContext ctx, List<RelNode> children) {
-        return IgniteFilter.create(
-            F.first(children),
-            condition.implement(ctx.getExpressionTranslator()),
-            Arrays.stream(variables).mapToObj(CorrelationId::new).collect(Collectors.toSet()));
+        RelNode input = F.first(children);
+        RexNode condition = this.condition.implement(ctx.getExpressionTranslator());
+        RelOptCluster cluster = input.getCluster();
+        RelMetadataQuery mq = cluster.getMetadataQuery();
+
+        RelTraitSet traits = cluster.traitSetOf(IgniteConvention.INSTANCE)
+            .replaceIf(DistributionTraitDef.INSTANCE, () -> IgniteMdDistribution.filter(mq, input, condition));
+
+        return new IgniteFilter(cluster, traits, input, condition);
     }
 }

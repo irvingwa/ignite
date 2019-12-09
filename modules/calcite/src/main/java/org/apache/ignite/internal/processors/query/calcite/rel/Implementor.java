@@ -14,28 +14,29 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.query.calcite.splitter;
-
-import java.io.Serializable;
-import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping;
+package org.apache.ignite.internal.processors.query.calcite.rel;
 
 /**
  *
  */
-public class SourceImpl implements Source, Serializable {
-    private final long exchangeId;
-    private final NodesMapping mapping;
+public interface Implementor<T> extends RelOp<IgniteRel, T> {
+    T implement(IgniteSender rel);
 
-    public SourceImpl(long exchangeId, NodesMapping mapping) {
-        this.exchangeId = exchangeId;
-        this.mapping = mapping;
-    }
+    T implement(IgniteFilter rel);
 
-    @Override public long exchangeId() {
-        return exchangeId;
-    }
+    T implement(IgniteProject rel);
 
-    @Override public NodesMapping mapping() {
-        return mapping;
+    T implement(IgniteJoin rel);
+
+    T implement(IgniteTableScan rel);
+
+    T implement(IgniteReceiver rel);
+
+    T implement(IgniteExchange rel);
+
+    T implement(IgniteRel other);
+
+    @Override default T go(IgniteRel rel) {
+        return rel.implement(this);
     }
 }

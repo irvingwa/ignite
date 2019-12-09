@@ -26,7 +26,6 @@ import org.apache.ignite.internal.processors.query.calcite.metadata.RelMetadataQ
 import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteSender;
-import org.apache.ignite.internal.processors.query.calcite.util.Edge;
 import org.apache.ignite.internal.util.typedef.F;
 
 /**
@@ -62,11 +61,11 @@ public class QueryPlan {
                 RelOptCluster cluster = child.getCluster();
                 RelTraitSet traitSet = child.getTraitSet();
 
-                IgniteSender sender = new IgniteSender(cluster, traitSet, child);
-                Fragment fragment = new Fragment(sender);
+                Fragment fragment = new Fragment(new IgniteSender(cluster, traitSet, child));
+
                 fragments.add(fragment);
 
-                parent.replaceInput(edge.childIdx(), new IgniteReceiver(cluster, traitSet, sender.getRowType(), fragment));
+                parent.replaceInput(edge.childIdx(), new IgniteReceiver(cluster, traitSet, child.getRowType(), fragment));
             }
         }
     }

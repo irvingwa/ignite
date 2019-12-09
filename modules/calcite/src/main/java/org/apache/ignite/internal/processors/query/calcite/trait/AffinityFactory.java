@@ -16,7 +16,6 @@
 
 package org.apache.ignite.internal.processors.query.calcite.trait;
 
-import java.io.ObjectStreamException;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.ToIntFunction;
@@ -29,29 +28,19 @@ import org.apache.ignite.internal.util.typedef.internal.U;
 /**
  *
  */
-public final class HashFunctionFactory extends AbstractDestinationFunctionFactory {
-    public static final DestinationFunctionFactory INSTANCE = new HashFunctionFactory();
+public final class AffinityFactory extends AbstractDestinationFunctionFactory {
+    private final int cacheId;
+    private final Object key;
 
-    @Override public DestinationFunction create(PlannerContext ctx, NodesMapping m, ImmutableIntList k) {
-        assert m != null && !F.isEmpty(m.assignments());
+    public AffinityFactory(int cacheId, Object key) {
+        this.cacheId = cacheId;
+        this.key = key;
+    }
 
-        int[] fields = k.toIntArray();
+    @Override public DestinationFunction create(PlannerContext ctx, NodesMapping mapping, ImmutableIntList keys) {
+        assert keys.size() == 1 && mapping != null && !F.isEmpty(mapping.assignments());
 
-        ToIntFunction<Object> hashFun = r -> {
-            Object[] row = (Object[]) r;
-
-            if (row == null)
-                return 0;
-
-            int hash = 1;
-
-            for (int i : fields)
-                hash = 31 * hash + (row[i] == null ? 0 : row[i].hashCode());
-
-            return hash;
-        };
-
-        List<List<UUID>> assignments = m.assignments();
+        List<List<UUID>> assignments = mapping.assignments();
 
         if (U.assertionsEnabled()) {
             for (List<UUID> assignment : assignments) {
@@ -59,14 +48,13 @@ public final class HashFunctionFactory extends AbstractDestinationFunctionFactor
             }
         }
 
-        return r -> assignments.get(hashFun.applyAsInt(r) % assignments.size());
+        ToIntFunction<Object> rowToPart = ctx.kernalContext()
+            .cache().context().cacheContext(cacheId).affinity()::partition;
+
+        return row -> assignments.get(rowToPart.applyAsInt(((Object[]) row)[keys.getInt(0)]));
     }
 
     @Override public Object key() {
-        return "DefaultHashFunction";
-    }
-
-    private Object readResolve() throws ObjectStreamException {
-        return INSTANCE;
+        return key;
     }
 }

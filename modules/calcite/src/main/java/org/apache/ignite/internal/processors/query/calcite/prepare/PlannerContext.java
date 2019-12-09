@@ -27,9 +27,6 @@ import org.apache.ignite.internal.processors.query.calcite.CalciteQueryProcessor
 import org.apache.ignite.internal.processors.query.calcite.exchange.ExchangeProcessor;
 import org.apache.ignite.internal.processors.query.calcite.metadata.MappingService;
 import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping;
-import org.apache.ignite.internal.processors.query.calcite.metadata.TableDistributionService;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
-import org.apache.ignite.internal.processors.query.calcite.type.RowType;
 
 /**
  *
@@ -43,14 +40,13 @@ public final class PlannerContext implements Context {
     private final GridKernalContext kernalContext;
     private final CalciteQueryProcessor queryProcessor;
     private final MappingService mappingService;
-    private final TableDistributionService distributionService;
     private final ExchangeProcessor exchangeProcessor;
 
     private IgnitePlanner planner;
 
     private PlannerContext(Context parentContext, Query query, AffinityTopologyVersion topologyVersion,
         SchemaPlus schema, IgniteLogger logger, GridKernalContext kernalContext, CalciteQueryProcessor queryProcessor, MappingService mappingService,
-        TableDistributionService distributionService, ExchangeProcessor exchangeProcessor) {
+        ExchangeProcessor exchangeProcessor) {
         this.parentContext = parentContext;
         this.query = query;
         this.topologyVersion = topologyVersion;
@@ -59,7 +55,6 @@ public final class PlannerContext implements Context {
         this.kernalContext = kernalContext;
         this.queryProcessor = queryProcessor;
         this.mappingService = mappingService;
-        this.distributionService = distributionService;
         this.exchangeProcessor = exchangeProcessor;
     }
 
@@ -99,10 +94,6 @@ public final class PlannerContext implements Context {
         return mappingService;
     }
 
-    public TableDistributionService distributionService() {
-        return distributionService;
-    }
-
     public ExchangeProcessor exchangeProcessor() {
         return exchangeProcessor;
     }
@@ -123,10 +114,6 @@ public final class PlannerContext implements Context {
 
     public NodesMapping mapForCache(int cacheId, AffinityTopologyVersion topVer) {
         return mappingService.distributed(cacheId, topVer);
-    }
-
-    public DistributionTrait distributionTrait(int cacheId, RowType rowType) {
-        return distributionService.distribution(cacheId, rowType);
     }
 
     public QueryProvider queryProvider() {
@@ -153,7 +140,6 @@ public final class PlannerContext implements Context {
         private GridKernalContext kernalContext;
         private CalciteQueryProcessor queryProcessor;
         private MappingService mappingService;
-        private TableDistributionService distributionService;
         private ExchangeProcessor exchangeProcessor;
 
         public Builder parentContext(Context parentContext) {
@@ -196,18 +182,13 @@ public final class PlannerContext implements Context {
             return this;
         }
 
-        public Builder distributionService(TableDistributionService distributionService) {
-            this.distributionService = distributionService;
-            return this;
-        }
-
         public Builder exchangeProcessor(ExchangeProcessor exchangeProcessor) {
             this.exchangeProcessor = exchangeProcessor;
             return this;
         }
 
         public PlannerContext build() {
-            return new PlannerContext(parentContext, query, topologyVersion, schema, logger, kernalContext, queryProcessor, mappingService, distributionService, exchangeProcessor);
+            return new PlannerContext(parentContext, query, topologyVersion, schema, logger, kernalContext, queryProcessor, mappingService, exchangeProcessor);
         }
     }
 }

@@ -16,41 +16,46 @@
 
 package org.apache.ignite.internal.processors.query.calcite.rel;
 
+import java.util.List;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.AbstractRelNode;
+import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.type.RelDataType;
-import org.apache.ignite.internal.processors.query.calcite.splitter.Source;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
+import org.apache.ignite.internal.processors.query.calcite.splitter.RelSource;
 import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTraitDef;
-import org.apache.ignite.internal.processors.query.calcite.util.RelImplementor;
+import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 
 /**
  *
  */
-public final class IgniteReceiver extends AbstractRelNode implements IgniteRel {
-    private final Source source;
+public class IgniteReceiver extends AbstractRelNode implements IgniteRel {
+    private RelSource source;
 
-    /**
-     * @param cluster Cluster this relational expression belongs to
-     * @param traits Trait set.
-     */
-    public IgniteReceiver(RelOptCluster cluster, RelTraitSet traits, RelDataType rowType, Source source) {
+    public IgniteReceiver(RelOptCluster cluster, RelTraitSet traits, RelDataType rowType, RelSource source) {
         super(cluster, traits);
+
         this.rowType = rowType;
         this.source = source;
     }
 
-    /** {@inheritDoc} */
-    @Override public <T> T implement(RelImplementor<T> implementor) {
+    @Override public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
+        return new IgniteReceiver(getCluster(), traitSet, rowType, source);
+    }
+
+    @Override public <T> T implement(Implementor<T> implementor) {
         return implementor.implement(this);
     }
 
-    public DistributionTrait distribution() {
-        return getTraitSet().getTrait(DistributionTraitDef.INSTANCE);
+    public RelSource source() {
+        return source;
     }
 
-    public Source source() {
-        return source;
+    public void source(RelSource source) {
+        this.source = source;
+    }
+
+    public IgniteDistribution distribution() {
+        return getTraitSet().getTrait(DistributionTraitDef.INSTANCE);
     }
 }

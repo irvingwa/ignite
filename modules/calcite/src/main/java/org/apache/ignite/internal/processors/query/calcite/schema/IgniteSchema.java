@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
+import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.internal.processors.cache.GridCacheContextInfo;
 import org.apache.ignite.internal.processors.query.GridQueryTypeDescriptor;
 import org.apache.ignite.internal.processors.query.calcite.util.Commons;
@@ -55,7 +56,10 @@ public class IgniteSchema extends AbstractSchema {
      * @param cacheInfo Cache info.
      */
     public void onSqlTypeCreate(GridQueryTypeDescriptor typeDesc, GridCacheContextInfo cacheInfo) {
-        addTable(new IgniteTable(typeDesc.tableName(), cacheInfo.name(), Commons.rowType(typeDesc)));
+        Object identityKey = cacheInfo.config().getCacheMode() == CacheMode.PARTITIONED ?
+            cacheInfo.cacheContext().group().affinity().similarAffinityKey() : null;
+
+        addTable(new IgniteTable(typeDesc.tableName(), cacheInfo.name(), Commons.rowType(typeDesc), identityKey));
     }
 
     /**

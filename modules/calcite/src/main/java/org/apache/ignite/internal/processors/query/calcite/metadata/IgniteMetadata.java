@@ -17,6 +17,7 @@
 package org.apache.ignite.internal.processors.query.calcite.metadata;
 
 import com.google.common.collect.ImmutableList;
+import java.util.List;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.metadata.ChainedRelMetadataProvider;
 import org.apache.calcite.rel.metadata.DefaultRelMetadataProvider;
@@ -25,7 +26,7 @@ import org.apache.calcite.rel.metadata.MetadataDef;
 import org.apache.calcite.rel.metadata.MetadataHandler;
 import org.apache.calcite.rel.metadata.RelMetadataProvider;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
+import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 import org.apache.ignite.internal.processors.query.calcite.util.IgniteMethod;
 
 /**
@@ -35,22 +36,10 @@ public class IgniteMetadata {
     public static final RelMetadataProvider METADATA_PROVIDER =
         ChainedRelMetadataProvider.of(
             ImmutableList.of(
+                IgniteMdDerivedDistribution.SOURCE,
                 IgniteMdDistribution.SOURCE,
                 IgniteMdFragmentInfo.SOURCE,
                 DefaultRelMetadataProvider.INSTANCE));
-
-    public interface DistributionTraitMetadata extends Metadata {
-        MetadataDef<DistributionTraitMetadata> DEF = MetadataDef.of(DistributionTraitMetadata.class,
-            DistributionTraitMetadata.Handler.class, IgniteMethod.DISTRIBUTION_TRAIT.method());
-
-        /** Determines how the rows are distributed. */
-        DistributionTrait getDistributionTrait();
-
-        /** Handler API. */
-        interface Handler extends MetadataHandler<DistributionTraitMetadata> {
-            DistributionTrait getDistributionTrait(RelNode r, RelMetadataQuery mq);
-        }
-    }
 
     public interface FragmentMetadata extends Metadata {
         MetadataDef<FragmentMetadata> DEF = MetadataDef.of(FragmentMetadata.class,
@@ -62,6 +51,18 @@ public class IgniteMetadata {
         /** Handler API. */
         interface Handler extends MetadataHandler<FragmentMetadata> {
             FragmentInfo getFragmentInfo(RelNode r, RelMetadataQuery mq);
+        }
+    }
+
+    public interface DerivedDistribution extends Metadata {
+        MetadataDef<DerivedDistribution> DEF = MetadataDef.of(DerivedDistribution.class,
+            DerivedDistribution.Handler.class, IgniteMethod.DERIVED_DISTRIBUTIONS.method());
+
+        List<IgniteDistribution> deriveDistributions();
+
+        /** Handler API. */
+        interface Handler extends MetadataHandler<DerivedDistribution> {
+            List<IgniteDistribution> deriveDistributions(RelNode r, RelMetadataQuery mq);
         }
     }
 }

@@ -16,52 +16,25 @@
 
 package org.apache.ignite.internal.processors.query.calcite.rel;
 
-import java.util.List;
 import org.apache.calcite.plan.RelOptCluster;
-import org.apache.calcite.plan.RelOptCost;
-import org.apache.calcite.plan.RelOptPlanner;
 import org.apache.calcite.plan.RelTraitSet;
+import org.apache.calcite.rel.RelDistribution;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.RelWriter;
-import org.apache.calcite.rel.SingleRel;
-import org.apache.calcite.rel.metadata.RelMetadataQuery;
-import org.apache.calcite.util.Util;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTraitDef;
-import org.apache.ignite.internal.processors.query.calcite.util.RelImplementor;
+import org.apache.calcite.rel.core.Exchange;
 
 /**
  *
  */
-public final class IgniteExchange extends SingleRel implements IgniteRel {
-    /**
-     * Creates a <code>SingleRel</code>.
-     *
-     * @param cluster Cluster this relational expression belongs to
-     * @param traits Node traits.
-     * @param input   Input relational expression
-     */
-    public IgniteExchange(RelOptCluster cluster, RelTraitSet traits, RelNode input) {
-        super(cluster, traits, input);
+public class IgniteExchange extends Exchange implements IgniteRel {
+    public IgniteExchange(RelOptCluster cluster, RelTraitSet traitSet, RelNode input, RelDistribution distribution) {
+        super(cluster, traitSet, input, distribution);
     }
 
-    @Override public RelOptCost computeSelfCost(RelOptPlanner planner, RelMetadataQuery mq) {
-        double rowCount = mq.getRowCount(this);
-        double bytesPerRow = getRowType().getFieldCount() * 4;
-        return planner.getCostFactory().makeCost(
-            Util.nLogN(rowCount) * bytesPerRow, rowCount, 0);
+    @Override public Exchange copy(RelTraitSet traitSet, RelNode newInput, RelDistribution newDistribution) {
+        return new IgniteExchange(getCluster(), traitSet, newInput, newDistribution);
     }
 
-    @Override public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-        return new IgniteExchange(getCluster(), traitSet, sole(inputs));
-    }
-
-    /** {@inheritDoc} */
-    @Override public <T> T implement(RelImplementor<T> implementor) {
+    @Override public <T> T implement(Implementor<T> implementor) {
         return implementor.implement(this);
-    }
-
-    @Override public RelWriter explainTerms(RelWriter pw) {
-        return super.explainTerms(pw)
-            .item("distribution", getTraitSet().getTrait(DistributionTraitDef.INSTANCE));
     }
 }

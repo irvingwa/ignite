@@ -17,49 +17,39 @@
 package org.apache.ignite.internal.processors.query.calcite.serialize.relation;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTrait;
 import org.apache.calcite.plan.RelTraitSet;
-import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
+import org.apache.ignite.internal.processors.query.calcite.util.Commons;
 
 /**
  *
  */
 public class SerializedTraits implements Serializable {
-    private static final Byte IGNITE_CONVENTION = 0;
+    private static final Byte CONVENTION = 0;
 
     private final List<Serializable> traits;
 
     public SerializedTraits(RelTraitSet traits) {
-        this.traits = translate(traits);
+        this.traits = Commons.transform(traits, this::toSerializable);
     }
 
     public RelTraitSet toTraitSet(RelOptCluster cluster) {
         RelTraitSet traits = cluster.traitSet();
 
-        for (Serializable trait : this.traits) {
+        for (Serializable trait : this.traits)
             traits.replace(fromSerializable(trait));
-        }
 
         return traits.simplify();
-    }
-
-    private List<Serializable> translate(List<RelTrait> traits) {
-        ArrayList<Serializable> res = new ArrayList<>(traits.size());
-        for (RelTrait trait : traits) {
-            res.add(toSerializable(trait));
-        }
-
-        return res;
     }
 
     private Serializable toSerializable(RelTrait trait) {
         if (trait instanceof Serializable)
             return (Serializable) trait;
-        if (trait == IgniteRel.IGNITE_CONVENTION)
-            return IGNITE_CONVENTION;
+        if (trait == IgniteConvention.INSTANCE)
+            return CONVENTION;
 
         throw new AssertionError();
     }
@@ -67,8 +57,8 @@ public class SerializedTraits implements Serializable {
     private RelTrait fromSerializable(Serializable trait) {
         if (trait instanceof RelTrait)
             return (RelTrait) trait;
-        if (IGNITE_CONVENTION.equals(trait))
-            return IgniteRel.IGNITE_CONVENTION;
+        if (CONVENTION.equals(trait))
+            return IgniteConvention.INSTANCE;
 
         throw new AssertionError();
     }

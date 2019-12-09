@@ -21,28 +21,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.apache.calcite.plan.Context;
 import org.apache.calcite.plan.Contexts;
-import org.apache.calcite.plan.RelOptNode;
 import org.apache.calcite.plan.RelOptRule;
-import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.plan.RelOptRuleOperand;
-import org.apache.calcite.plan.RelTraitSet;
-import org.apache.calcite.plan.volcano.RelSubset;
 import org.apache.calcite.rel.RelNode;
 import org.apache.ignite.internal.processors.query.GridQueryProperty;
 import org.apache.ignite.internal.processors.query.GridQueryTypeDescriptor;
 import org.apache.ignite.internal.processors.query.QueryContext;
 import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
-import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
 import org.apache.ignite.internal.processors.query.calcite.type.RowType;
 import org.apache.ignite.internal.util.typedef.F;
 import org.jetbrains.annotations.NotNull;
@@ -79,43 +71,6 @@ public final class Commons {
 
     public static RelOptRuleOperand any(Class<? extends RelNode> first, Class<? extends RelNode> second) {
         return RelOptRule.operand(first, RelOptRule.operand(second, RelOptRule.any()));
-    }
-
-    public static <T extends RelNode> RelOp<T, Boolean> transformSubset(RelOptRuleCall call, RelNode input, BiFunction<T, RelNode, RelNode> transformFun) {
-        return rel -> {
-            if (!(input instanceof RelSubset))
-                return Boolean.FALSE;
-
-            RelSubset subset = (RelSubset) input;
-
-            Set<RelTraitSet> traits = subset.getRelList().stream()
-                .filter(r -> r instanceof IgniteRel)
-                .map(RelOptNode::getTraitSet)
-                .collect(Collectors.toSet());
-
-            if (traits.isEmpty())
-                return Boolean.FALSE;
-
-            Set<RelNode> transformed = Collections.newSetFromMap(new IdentityHashMap<>());
-
-            boolean transform = Boolean.FALSE;
-
-            for (RelTraitSet traitSet: traits) {
-                RelNode newRel = RelOptRule.convert(subset, traitSet.simplify());
-
-                if (transformed.add(newRel)) {
-                    RelNode out = transformFun.apply(rel, newRel);
-
-                    if (out != null) {
-                        call.transformTo(out);
-
-                        transform = Boolean.TRUE;
-                    }
-                }
-            }
-
-            return transform;
-        };
     }
 
     public static <T> List<T> intersect(List<T> left, List<T> right) {
@@ -169,6 +124,10 @@ public final class Commons {
             set.add(mapFun.apply(t));
 
         return set;
+    }
+
+    public static PlannerContext plannerContext(RelNode rel) {
+        return plannerContext(rel.getCluster().getPlanner().getContext());
     }
 
     public static PlannerContext plannerContext(Context ctx) {

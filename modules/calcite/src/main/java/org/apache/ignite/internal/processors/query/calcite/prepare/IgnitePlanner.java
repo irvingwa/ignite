@@ -38,6 +38,7 @@ import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.plan.hep.HepPlanner;
 import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.plan.volcano.VolcanoPlanner;
+import org.apache.calcite.plan.volcano.VolcanoUtils;
 import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelRoot;
@@ -46,7 +47,9 @@ import org.apache.calcite.rel.core.TableFunctionScan;
 import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.logical.LogicalValues;
 import org.apache.calcite.rel.metadata.CachingRelMetadataProvider;
+import org.apache.calcite.rel.metadata.JaninoRelMetadataProvider;
 import org.apache.calcite.rel.metadata.RelMetadataProvider;
+import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeSystem;
 import org.apache.calcite.rex.RexBuilder;
@@ -70,9 +73,8 @@ import org.apache.calcite.tools.RuleSet;
 import org.apache.calcite.tools.ValidationException;
 import org.apache.calcite.util.Pair;
 import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMetadata;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
-import org.apache.ignite.internal.processors.query.calcite.rule.PlannerPhase;
-import org.apache.ignite.internal.processors.query.calcite.rule.PlannerType;
 import org.apache.ignite.internal.processors.query.calcite.serialize.Graph;
 import org.apache.ignite.internal.processors.query.calcite.serialize.relation.GraphToRelConverter;
 import org.apache.ignite.internal.processors.query.calcite.serialize.relation.RelGraph;
@@ -159,12 +161,14 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
         metadataProvider = null;
         validator = null;
 
+        RelMetadataQuery.THREAD_PROVIDERS.remove();
+
         open = false;
     }
 
     private void ready() {
         if (!open) {
-            planner = new VolcanoPlanner(frameworkConfig.getCostFactory(), context);
+            planner = VolcanoUtils.impatient(new VolcanoPlanner(frameworkConfig.getCostFactory(), context));
             planner.setExecutor(executor);
             metadataProvider = new CachingRelMetadataProvider(IgniteMetadata.METADATA_PROVIDER, planner);
 
@@ -213,7 +217,7 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
     public RelNode convert(RelGraph graph) {
         ready();
 
-        RelOptCluster cluster = RelOptCluster.create(planner, createRexBuilder());
+        RelOptCluster cluster = createCluster(createRexBuilder());
         RelBuilder relBuilder = createRelBuilder(cluster, createCatalogReader());
 
         return new GraphToRelConverter(this, relBuilder, operatorTable).convert(graph);
@@ -224,7 +228,7 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
         ready();
 
         RexBuilder rexBuilder = createRexBuilder();
-        RelOptCluster cluster = RelOptCluster.create(planner, rexBuilder);
+        RelOptCluster cluster = createCluster(rexBuilder);
         SqlToRelConverter.Config config = SqlToRelConverter.configBuilder()
             .withConfig(sqlToRelConverterConfig)
             .withTrimUnusedFields(false)
@@ -242,8 +246,8 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
     public QueryPlan plan(RelNode rel) {
         ready();
 
-        if (rel.getConvention() != IgniteRel.IGNITE_CONVENTION)
-            throw new IllegalArgumentException("IGNITE_CONVENTION is required.");
+        if (rel.getConvention() != IgniteConvention.INSTANCE)
+            throw new IllegalArgumentException("Physical node is required.");
 
         return new Splitter().go((IgniteRel) rel);
     }
@@ -251,10 +255,10 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
     public Graph graph(RelNode rel) {
         ready();
 
-        if (rel.getConvention() != IgniteRel.IGNITE_CONVENTION)
-            throw new IllegalArgumentException("IGNITE_CONVENTION is required.");
+        if (rel.getConvention() != IgniteConvention.INSTANCE)
+            throw new IllegalArgumentException("Physical node is required.");
 
-        return new RelToGraphConverter().convert((IgniteRel) rel);
+        return new RelToGraphConverter().go((IgniteRel) rel);
     }
 
     /** {@inheritDoc} */
@@ -277,7 +281,7 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
         validator.setIdentifierExpansion(true);
 
         RexBuilder rexBuilder = createRexBuilder();
-        RelOptCluster cluster = RelOptCluster.create(planner, rexBuilder);
+        RelOptCluster cluster = createCluster(rexBuilder);
         SqlToRelConverter.Config config = SqlToRelConverter
             .configBuilder()
             .withConfig(sqlToRelConverterConfig)
@@ -292,6 +296,15 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
         RelRoot root2 = root.withRel(sqlToRelConverter.flattenTypes(root.rel, true));
         RelBuilder relBuilder = createRelBuilder(cluster, null);
         return root2.withRel(RelDecorrelator.decorrelateQuery(root.rel, relBuilder));
+    }
+
+    private RelOptCluster createCluster(RexBuilder rexBuilder) {
+        RelOptCluster cluster = RelOptCluster.create(planner, rexBuilder);
+
+        cluster.setMetadataProvider(metadataProvider);
+        RelMetadataQuery.THREAD_PROVIDERS.set(JaninoRelMetadataProvider.of(metadataProvider));
+
+        return cluster;
     }
 
     /** {@inheritDoc} */

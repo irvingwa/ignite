@@ -27,13 +27,13 @@ import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping
 import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteSender;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
+import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 import org.apache.ignite.internal.util.typedef.F;
 
 /**
  *
  */
-public class Fragment implements Source {
+public class Fragment implements RelSource {
     private static final AtomicLong ID_GEN = new AtomicLong();
 
     private final long exchangeId = ID_GEN.getAndIncrement();
@@ -47,7 +47,6 @@ public class Fragment implements Source {
     }
 
     public void init(PlannerContext ctx, RelMetadataQuery mq) {
-
         FragmentInfo info = IgniteMdFragmentInfo.fragmentInfo(root, mq);
 
         if (info.mapping() == null)
@@ -55,12 +54,12 @@ public class Fragment implements Source {
         else
             mapping = info.mapping().deduplicate();
 
-        ImmutableList<Pair<IgniteReceiver, Source>> sources = info.sources();
+        ImmutableList<Pair<IgniteReceiver, RelSource>> sources = info.sources();
 
         if (!F.isEmpty(sources)) {
-            for (Pair<IgniteReceiver, Source> input : sources) {
+            for (Pair<IgniteReceiver, RelSource> input : sources) {
                 IgniteReceiver receiver = input.left;
-                Source source = input.right;
+                RelSource source = input.right;
 
                 source.init(mapping, receiver.distribution(), ctx, mq);
             }
@@ -71,10 +70,10 @@ public class Fragment implements Source {
         return exchangeId;
     }
 
-    @Override public void init(NodesMapping mapping, DistributionTrait distribution, PlannerContext ctx, RelMetadataQuery mq) {
+    @Override public void init(NodesMapping mapping, IgniteDistribution distribution, PlannerContext ctx, RelMetadataQuery mq) {
         assert remote();
 
-        ((IgniteSender) root).init(new TargetImpl(exchangeId, mapping, distribution));
+        ((IgniteSender) root).target(new RelTargetImpl(exchangeId, mapping, distribution));
 
         init(ctx, mq);
     }

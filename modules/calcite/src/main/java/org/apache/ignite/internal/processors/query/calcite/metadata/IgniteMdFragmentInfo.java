@@ -22,6 +22,7 @@ import org.apache.calcite.plan.volcano.RelSubset;
 import org.apache.calcite.rel.BiRel;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.SingleRel;
+import org.apache.calcite.rel.core.Join;
 import org.apache.calcite.rel.metadata.MetadataDef;
 import org.apache.calcite.rel.metadata.MetadataHandler;
 import org.apache.calcite.rel.metadata.ReflectiveRelMetadataProvider;
@@ -31,7 +32,9 @@ import org.apache.calcite.util.Pair;
 import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMetadata.FragmentMetadata;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteTableScan;
-import org.apache.ignite.internal.processors.query.calcite.util.Edge;
+import org.apache.ignite.internal.processors.query.calcite.schema.IgniteTable;
+import org.apache.ignite.internal.processors.query.calcite.splitter.Edge;
+import org.apache.ignite.internal.processors.query.calcite.util.Commons;
 import org.apache.ignite.internal.processors.query.calcite.util.IgniteMethod;
 
 /**
@@ -58,7 +61,7 @@ public class IgniteMdFragmentInfo implements MetadataHandler<FragmentMetadata> {
         return fragmentInfo(rel.getInput(), mq);
     }
 
-    public FragmentInfo getFragmentInfo(BiRel rel, RelMetadataQuery mq) {
+    public FragmentInfo getFragmentInfo(Join rel, RelMetadataQuery mq) {
         mq = RelMetadataQueryEx.wrap(mq);
 
         FragmentInfo left = fragmentInfo(rel.getLeft(), mq);
@@ -84,6 +87,18 @@ public class IgniteMdFragmentInfo implements MetadataHandler<FragmentMetadata> {
         }
     }
 
+    public FragmentInfo getFragmentInfo(IgniteReceiver rel, RelMetadataQuery mq) {
+        return new FragmentInfo(Pair.of(rel, rel.source()));
+    }
+
+    public FragmentInfo getFragmentInfo(IgniteTableScan rel, RelMetadataQuery mq) {
+        return rel.getTable().unwrap(IgniteTable.class).fragmentInfo(Commons.plannerContext(rel));
+    }
+
+    public static FragmentInfo fragmentInfo(RelNode rel, RelMetadataQuery mq) {
+        return RelMetadataQueryEx.wrap(mq).getFragmentLocation(rel);
+    }
+
     private OptimisticPlanningException planningException(BiRel rel, Exception cause, boolean splitLeft) {
         String msg = "Failed to calculate physical distribution";
 
@@ -91,17 +106,5 @@ public class IgniteMdFragmentInfo implements MetadataHandler<FragmentMetadata> {
             return new OptimisticPlanningException(msg, new Edge(rel, rel.getLeft(), 0), cause);
 
         return new OptimisticPlanningException(msg, new Edge(rel, rel.getRight(), 1), cause);
-    }
-
-    public FragmentInfo getFragmentInfo(IgniteReceiver rel, RelMetadataQuery mq) {
-        return new FragmentInfo(Pair.of(rel, rel.source()));
-    }
-
-    public FragmentInfo getFragmentInfo(IgniteTableScan rel, RelMetadataQuery mq) {
-        return rel.fragmentInfo();
-    }
-
-    public static FragmentInfo fragmentInfo(RelNode rel, RelMetadataQuery mq) {
-        return RelMetadataQueryEx.wrap(mq).getFragmentLocation(rel);
     }
 }

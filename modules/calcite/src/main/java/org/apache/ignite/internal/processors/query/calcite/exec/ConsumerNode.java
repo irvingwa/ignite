@@ -30,7 +30,7 @@ public class ConsumerNode extends AbstractNode<Object[]> implements SingleNode<O
 
     private ArrayDeque<Object[]> buff;
 
-    protected ConsumerNode() {
+    public ConsumerNode() {
         super(Sink.noOp());
 
         buff = new ArrayDeque<>(DEFAULT_BUFFER_SIZE);

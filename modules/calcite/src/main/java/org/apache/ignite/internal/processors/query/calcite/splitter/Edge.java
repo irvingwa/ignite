@@ -14,15 +14,33 @@
  * limitations under the License.
  */
 
-package org.apache.calcite.interpreter;
+package org.apache.ignite.internal.processors.query.calcite.splitter;
 
-import org.apache.calcite.DataContext;
+import org.apache.calcite.rel.RelNode;
 
 /**
  *
  */
-public class Util {
-    public static Context createContext(DataContext ctx) {
-        return new Context(ctx);
+public class Edge {
+    private final RelNode parent;
+    private final RelNode child;
+    private final int childIdx;
+
+    public Edge(RelNode parent, RelNode child, int childIdx) {
+        this.parent = parent;
+        this.child = child;
+        this.childIdx = childIdx;
+    }
+
+    public RelNode parent() {
+        return parent;
+    }
+
+    public RelNode child() {
+        return child;
+    }
+
+    public int childIdx() {
+        return childIdx;
     }
 }

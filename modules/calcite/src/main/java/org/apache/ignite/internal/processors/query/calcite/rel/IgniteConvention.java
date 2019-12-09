@@ -16,27 +16,26 @@
 
 package org.apache.ignite.internal.processors.query.calcite.rel;
 
-import java.util.List;
-import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.Convention;
+import org.apache.calcite.plan.RelOptPlanner;
 import org.apache.calcite.plan.RelTraitSet;
-import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.core.Project;
-import org.apache.calcite.rel.type.RelDataType;
-import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.plan.volcano.AbstractConverter;
 
 /**
  *
  */
-public class IgniteProject extends Project implements IgniteRel {
-    public IgniteProject(RelOptCluster cluster, RelTraitSet traits, RelNode input, List<? extends RexNode> projects, RelDataType rowType) {
-        super(cluster, traits, input, projects, rowType);
+public class IgniteConvention extends Convention.Impl {
+    public static final Convention INSTANCE = new IgniteConvention();
+
+    private IgniteConvention() {
+        super("IGNITE", IgniteRel.class);
     }
 
-    @Override public Project copy(RelTraitSet traitSet, RelNode input, List<RexNode> projects, RelDataType rowType) {
-        return new IgniteProject(getCluster(), traitSet, input, projects, rowType);
+    @Override public void register(RelOptPlanner planner) {
+        planner.addRule(AbstractConverter.ExpandConversionRule.INSTANCE);
     }
 
-    @Override public <T> T implement(Implementor<T> implementor) {
-        return implementor.implement(this);
+    @Override public boolean useAbstractConvertersForConversion(RelTraitSet fromTraits, RelTraitSet toTraits) {
+        return fromTraits.contains(INSTANCE) && toTraits.contains(INSTANCE);
     }
 }

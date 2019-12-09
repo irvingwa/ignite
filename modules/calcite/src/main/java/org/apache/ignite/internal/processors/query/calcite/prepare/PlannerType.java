@@ -15,13 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.query.calcite.util;
-
-import org.apache.calcite.rel.RelNode;
+package org.apache.ignite.internal.processors.query.calcite.prepare;
 
 /**
  *
  */
-public interface RelOp<T extends RelNode, R> {
-    R go(T rel);
+public enum PlannerType {
+    HEP,
+    VOLCANO;
 }

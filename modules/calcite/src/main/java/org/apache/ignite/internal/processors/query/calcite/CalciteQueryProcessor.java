@@ -37,7 +37,6 @@ import org.apache.ignite.internal.processors.query.IgniteSQLException;
 import org.apache.ignite.internal.processors.query.QueryContext;
 import org.apache.ignite.internal.processors.query.QueryEngine;
 import org.apache.ignite.internal.processors.query.calcite.cluster.MappingServiceImpl;
-import org.apache.ignite.internal.processors.query.calcite.cluster.TableDistributionServiceImpl;
 import org.apache.ignite.internal.processors.query.calcite.prepare.DistributedExecution;
 import org.apache.ignite.internal.processors.query.calcite.prepare.IgnitePlanner;
 import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
@@ -154,7 +153,6 @@ public class CalciteQueryProcessor implements QueryEngine {
             .query(query)
             .schema(schemaHolder.schema())
             .topologyVersion(readyAffinityVersion())
-            .distributionService(new TableDistributionServiceImpl(kernalContext))
             .mappingService(new MappingServiceImpl(kernalContext))
             .build();
     }

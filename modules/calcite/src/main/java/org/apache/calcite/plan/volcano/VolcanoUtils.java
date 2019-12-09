@@ -14,14 +14,21 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.query.calcite.metadata;
+package org.apache.calcite.plan.volcano;
 
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
-import org.apache.ignite.internal.processors.query.calcite.type.RowType;
+import org.apache.calcite.plan.RelTraitSet;
 
 /**
  *
  */
-public interface TableDistributionService {
-    DistributionTrait distribution(int cacheId, RowType rowType);
+public class VolcanoUtils {
+    public static RelSubset subset(RelSubset subset, RelTraitSet traits) {
+        return subset.set.getOrCreateSubset(subset.getCluster(), traits.simplify());
+    }
+
+    public static VolcanoPlanner impatient(VolcanoPlanner planner) {
+        planner.impatient = true;
+
+        return planner;
+    }
 }

@@ -16,14 +16,32 @@
 
 package org.apache.ignite.internal.processors.query.calcite.splitter;
 
+import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
+import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
+import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 
 /**
  *
  */
-public interface Target {
+public interface RelSource {
+    /**
+     * @return Exchange id, has to be unique in scope of query.
+     */
     long exchangeId();
+
+    /**
+     * @return Source mapping.
+     */
     NodesMapping mapping();
-    DistributionTrait distribution();
+
+    /**
+     * @param mapping Target mapping.
+     * @param distribution Target distribution.
+     * @param ctx Context.
+     * @param mq Metadata query instance.
+     */
+    default void init(NodesMapping mapping, IgniteDistribution distribution, PlannerContext ctx, RelMetadataQuery mq) {
+        // No-op
+    }
 }

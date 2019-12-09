@@ -40,19 +40,20 @@ import org.apache.calcite.tools.Frameworks;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.processors.query.calcite.exec.ConsumerNode;
-import org.apache.ignite.internal.processors.query.calcite.exec.Interpretable;
+import org.apache.ignite.internal.processors.query.calcite.exec.ImplementorImpl;
 import org.apache.ignite.internal.processors.query.calcite.exec.Node;
 import org.apache.ignite.internal.processors.query.calcite.metadata.MappingService;
 import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping;
-import org.apache.ignite.internal.processors.query.calcite.metadata.TableDistributionService;
 import org.apache.ignite.internal.processors.query.calcite.prepare.ContextValue;
 import org.apache.ignite.internal.processors.query.calcite.prepare.DataContextImpl;
 import org.apache.ignite.internal.processors.query.calcite.prepare.IgnitePlanner;
 import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
+import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerPhase;
+import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerType;
 import org.apache.ignite.internal.processors.query.calcite.prepare.Query;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
-import org.apache.ignite.internal.processors.query.calcite.rule.PlannerPhase;
-import org.apache.ignite.internal.processors.query.calcite.rule.PlannerType;
+import org.apache.ignite.internal.processors.query.calcite.rel.Implementor;
 import org.apache.ignite.internal.processors.query.calcite.schema.IgniteSchema;
 import org.apache.ignite.internal.processors.query.calcite.schema.IgniteTable;
 import org.apache.ignite.internal.processors.query.calcite.serialize.expression.Expression;
@@ -61,7 +62,6 @@ import org.apache.ignite.internal.processors.query.calcite.serialize.relation.Re
 import org.apache.ignite.internal.processors.query.calcite.serialize.relation.RelToGraphConverter;
 import org.apache.ignite.internal.processors.query.calcite.splitter.QueryPlan;
 import org.apache.ignite.internal.processors.query.calcite.splitter.Splitter;
-import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTrait;
 import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTraitDef;
 import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistributions;
 import org.apache.ignite.internal.processors.query.calcite.type.RowType;
@@ -70,27 +70,29 @@ import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.marshaller.jdk.JdkMarshaller;
 import org.apache.ignite.testframework.junits.GridTestKernalContext;
-import org.apache.ignite.testframework.junits.WithSystemProperty;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
-
-import static org.apache.ignite.internal.processors.query.calcite.exec.Interpretable.INTERPRETABLE;
 
 /**
  *
  */
-@WithSystemProperty(key = "calcite.debug", value = "true")
+//@WithSystemProperty(key = "calcite.debug", value = "true")
 public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
-    private static GridTestKernalContext kernalContext;
-    private static CalciteQueryProcessor proc;
-    private static SchemaPlus schema;
-    private static List<UUID> nodes;
+    private GridTestKernalContext kernalContext;
+    private CalciteQueryProcessor proc;
+    private SchemaPlus schema;
+    private List<UUID> nodes;
 
-    @BeforeClass
-    public static void setupClass() {
+    private TestIgniteTable city;
+    private TestIgniteTable country;
+    private TestIgniteTable project;
+    private TestIgniteTable developer;
+
+    @Before
+    public void setup() {
         kernalContext = new GridTestKernalContext(log);
         proc = new CalciteQueryProcessor();
         proc.setLogger(log);
@@ -98,61 +100,50 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
         IgniteSchema publicSchema = new IgniteSchema("PUBLIC");
 
-        publicSchema.addTable(new IgniteTable("Developer", "Developer",
+        developer = new TestIgniteTable("Developer", "Developer",
             RowType.builder()
                 .keyField("id", Integer.class, true)
                 .field("name", String.class)
                 .field("projectId", Integer.class)
                 .field("cityId", Integer.class)
-                .build()){
-            @Override public Enumerable<Object[]> scan(DataContext root) {
-                return Linq4j.asEnumerable(Arrays.asList(
-                    new Object[]{0, null, 0, "Igor", 0, 1},
-                    new Object[]{1, null, 1, "Roman", 0, 0}
-                ));
-            }
-        });
+                .build(), Arrays.asList(
+            new Object[]{0, null, 0, "Igor", 0, 1},
+            new Object[]{1, null, 1, "Roman", 0, 0}
+        ));
 
-        publicSchema.addTable(new IgniteTable("Project", "Project",
+        project = new TestIgniteTable("Project", "Project",
             RowType.builder()
                 .keyField("id", Integer.class, true)
                 .field("name", String.class)
                 .field("ver", Integer.class)
-                .build()){
-            @Override public Enumerable<Object[]> scan(DataContext root) {
-                return Linq4j.asEnumerable(Arrays.asList(
-                    new Object[]{0, null, 0, "Calcite", 1},
-                    new Object[]{1, null, 1, "Ignite", 1}
-                ));
-            }
-        });
+                .build(), Arrays.asList(
+            new Object[]{0, null, 0, "Calcite", 1},
+            new Object[]{1, null, 1, "Ignite", 1}
+        ));
 
-        publicSchema.addTable(new IgniteTable("Country", "Country",
+        country = new TestIgniteTable("Country", "Country",
             RowType.builder()
                 .keyField("id", Integer.class, true)
                 .field("name", String.class)
                 .field("countryCode", Integer.class)
-                .build()){
-            @Override public Enumerable<Object[]> scan(DataContext root) {
-                return Linq4j.asEnumerable(Arrays.<Object[]>asList(
-                    new Object[]{0, null, 0, "Russia", 7}
-                ));
-            }
-        });
+                .build(), Arrays.<Object[]>asList(
+            new Object[]{0, null, 0, "Russia", 7}
+        ));
 
-        publicSchema.addTable(new IgniteTable("City", "City",
+        city = new TestIgniteTable("City", "City",
             RowType.builder()
                 .keyField("id", Integer.class, true)
                 .field("name", String.class)
                 .field("countryId", Integer.class)
-                .build()){
-            @Override public Enumerable<Object[]> scan(DataContext root) {
-                return Linq4j.asEnumerable(Arrays.asList(
-                    new Object[]{0, null, 0, "Moscow", 0},
-                    new Object[]{1, null, 1, "Saint Petersburg", 0}
-                ));
-            }
-        });
+                .build(), Arrays.asList(
+            new Object[]{0, null, 0, "Moscow", 0},
+            new Object[]{1, null, 1, "Saint Petersburg", 0}
+        ));
+
+        publicSchema.addTable(developer);
+        publicSchema.addTable(project);
+        publicSchema.addTable(country);
+        publicSchema.addTable(city);
 
         schema = Frameworks
             .createRootSchema(false)
@@ -366,11 +357,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
             // Transformation chain
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         }
@@ -426,11 +417,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             assertNotNull(rel);
 
@@ -442,7 +433,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
             plan.init(ctx);
 
-            RelGraph graph = new RelToGraphConverter().convert((IgniteRel) plan.fragments().get(1).root());
+            RelGraph graph = new RelToGraphConverter().go((IgniteRel) plan.fragments().get(1).root());
 
             convertedBytes = new JdkMarshaller().marshal(graph);
 
@@ -464,6 +455,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
     @Test
     public void testSplitterCollocatedPartitionedPartitioned() throws Exception {
+        Object key = new Object();
+
+        developer.identityKey(key);
+        project.identityKey(key);
+
         String sql = "SELECT d.id, d.name, d.projectId, p.id0, p.ver0 " +
             "FROM PUBLIC.Developer d JOIN (" +
             "SELECT pp.id as id0, pp.ver as ver0 FROM PUBLIC.Project pp" +
@@ -504,11 +500,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         }
@@ -565,36 +561,17 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             // Transformation chain
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
-            RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
-                .replace(IgniteDistributions.single())
-                .simplify();
+            RelTraitSet desired = rel.getCluster().traitSetOf(IgniteConvention.INSTANCE);
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
-
-            assertNotNull(relRoot);
-
-            QueryPlan plan = new Splitter().go((IgniteRel) rel);
-
-            assertNotNull(plan);
-
-            plan.init(ctx);
-
-            assertNotNull(plan);
-
-            assertTrue(plan.fragments().size() == 2);
-
-            desired = rel.getCluster().traitSetOf(INTERPRETABLE);
-
-            RelNode phys = planner.transform(PlannerType.VOLCANO, PlannerPhase.PHYSICAL, plan.fragments().get(1).root(), desired);
+            RelNode phys = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             assertNotNull(phys);
 
             Map<String, Object> params = ctx.query().params(F.asMap(ContextValue.QUERY_ID.valueName(), new GridCacheVersion()));
 
-            Interpretable.Implementor<Object[]> implementor = new Interpretable.Implementor<>(new DataContextImpl(params, ctx));
+            Implementor<Node<Object[]>> implementor = new ImplementorImpl(new DataContextImpl(params, ctx));
 
-            Node<Object[]> exec = implementor.go(phys.getInput(0));
+            Node<Object[]> exec = implementor.go((IgniteRel) phys);
 
             assertNotNull(exec);
 
@@ -625,12 +602,6 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             "ON d.id = p.id0 " +
             "WHERE (d.projectId + 1) > ?";
 
-        TableDistributionService ds = new TableDistributionService(){
-            @Override public DistributionTrait distribution(int cacheId, RowType rowType) {
-                return IgniteDistributions.broadcast();
-            }
-        };
-
         MappingService ms = new MappingService() {
             @Override public NodesMapping random(AffinityTopologyVersion topVer) {
                 return new NodesMapping(select(nodes, 0,1,2,3), null, (byte) 0);
@@ -650,7 +621,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             }
         };
 
-        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms, ds));
+        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms));
         assertNotNull(ctx);
 
         RelTraitDef[] traitDefs = {
@@ -682,11 +653,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         }
@@ -706,21 +677,14 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
     @Test
     public void testSplitterCollocatedReplicatedAndPartitioned() throws Exception {
+        developer.identityKey(new Object());
+
         String sql = "SELECT d.id, d.name, d.projectId, p.id0, p.ver0 " +
             "FROM PUBLIC.Developer d JOIN (" +
             "SELECT pp.id as id0, pp.ver as ver0 FROM PUBLIC.Project pp" +
             ") p " +
             "ON d.id = p.id0 " +
             "WHERE (d.projectId + 1) > ?";
-
-        TableDistributionService ds = new TableDistributionService(){
-            @Override public DistributionTrait distribution(int cacheId, RowType rowType) {
-                if (cacheId == CU.cacheId("Project"))
-                    return IgniteDistributions.broadcast();
-
-                return IgniteDistributions.hash(rowType.distributionKeys());
-            }
-        };
 
         MappingService ms = new MappingService() {
             @Override public NodesMapping random(AffinityTopologyVersion topVer) {
@@ -747,7 +711,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             }
         };
 
-        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms, ds));
+        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms));
 
         assertNotNull(ctx);
 
@@ -780,11 +744,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         }
@@ -804,21 +768,14 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
     @Test
     public void testSplitterPartiallyCollocated() throws Exception {
+        developer.identityKey(new Object());
+
         String sql = "SELECT d.id, d.name, d.projectId, p.id0, p.ver0 " +
             "FROM PUBLIC.Developer d JOIN (" +
             "SELECT pp.id as id0, pp.ver as ver0 FROM PUBLIC.Project pp" +
             ") p " +
             "ON d.projectId = p.id0 " +
             "WHERE (d.projectId + 1) > ?";
-
-        TableDistributionService ds = new TableDistributionService(){
-            @Override public DistributionTrait distribution(int cacheId, RowType rowType) {
-                if (cacheId == CU.cacheId("Project"))
-                    return IgniteDistributions.broadcast();
-
-                return IgniteDistributions.hash(rowType.distributionKeys());
-            }
-        };
 
         MappingService ms = new MappingService() {
             @Override public NodesMapping random(AffinityTopologyVersion topVer) {
@@ -845,7 +802,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             }
         };
 
-        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms, ds));
+        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms));
 
         assertNotNull(ctx);
 
@@ -878,11 +835,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         }
@@ -909,12 +866,6 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             "ON d.projectId = p.ver0 " +
             "WHERE (d.projectId + 1) > ?";
 
-        TableDistributionService ds = new TableDistributionService(){
-            @Override public DistributionTrait distribution(int cacheId, RowType rowType) {
-                return IgniteDistributions.broadcast();
-            }
-        };
-
         MappingService ms = new MappingService() {
             @Override public NodesMapping random(AffinityTopologyVersion topVer) {
                 return new NodesMapping(select(nodes, 0,1,2,3), null, (byte) 0);
@@ -935,7 +886,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             }
         };
 
-        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms, ds));
+        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms));
 
         assertNotNull(ctx);
 
@@ -968,11 +919,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         }
@@ -992,22 +943,14 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
     @Test
     public void testSplitterPartiallyReplicated1() throws Exception {
+        developer.identityKey(new Object());
+
         String sql = "SELECT d.id, d.name, d.projectId, p.id0, p.ver0 " +
             "FROM PUBLIC.Developer d JOIN (" +
             "SELECT pp.id as id0, pp.ver as ver0 FROM PUBLIC.Project pp" +
             ") p " +
             "ON d.id = p.id0 " +
             "WHERE (d.projectId + 1) > ?";
-
-
-        TableDistributionService ds = new TableDistributionService(){
-            @Override public DistributionTrait distribution(int cacheId, RowType rowType) {
-                if (cacheId == CU.cacheId("Project"))
-                    return IgniteDistributions.broadcast();
-
-                return IgniteDistributions.hash(rowType.distributionKeys());
-            }
-        };
 
         MappingService ms = new MappingService() {
             @Override public NodesMapping random(AffinityTopologyVersion topVer) {
@@ -1034,7 +977,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             }
         };
 
-        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms, ds));
+        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms));
 
         assertNotNull(ctx);
 
@@ -1067,11 +1010,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         }
@@ -1091,22 +1034,14 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
     @Test
     public void testSplitterPartiallyReplicated2() throws Exception {
+        developer.identityKey(new Object());
+
         String sql = "SELECT d.id, d.name, d.projectId, p.id0, p.ver0 " +
             "FROM PUBLIC.Developer d JOIN (" +
             "SELECT pp.id as id0, pp.ver as ver0 FROM PUBLIC.Project pp" +
             ") p " +
             "ON d.id = p.id0 " +
             "WHERE (d.projectId + 1) > ?";
-
-
-        TableDistributionService ds = new TableDistributionService() {
-            @Override public DistributionTrait distribution(int cacheId, RowType rowType) {
-                if (cacheId == CU.cacheId("Project"))
-                    return IgniteDistributions.broadcast();
-
-                return IgniteDistributions.hash(rowType.distributionKeys());
-            }
-        };
 
         MappingService ms = new MappingService() {
             @Override public NodesMapping random(AffinityTopologyVersion topVer) {
@@ -1133,7 +1068,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             }
         };
 
-        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms, ds));
+        PlannerContext ctx = proc.context(Contexts.empty(), sql, new Object[]{2}, (c, q) -> context(c, q, ms));
 
         assertNotNull(ctx);
 
@@ -1166,11 +1101,11 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             rel = planner.transform(PlannerType.HEP, PlannerPhase.SUBQUERY_REWRITE, rel, rel.getTraitSet());
 
             RelTraitSet desired = rel.getCluster().traitSet()
-                .replace(IgniteRel.IGNITE_CONVENTION)
+                .replace(IgniteConvention.INSTANCE)
                 .replace(IgniteDistributions.single())
                 .simplify();
 
-            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.LOGICAL, rel, desired);
+            rel = planner.transform(PlannerType.VOLCANO, PlannerPhase.OPTIMIZATION, rel, desired);
 
             relRoot = relRoot.withRel(rel).withKind(sqlNode.getKind());
         }
@@ -1230,16 +1165,10 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             }
         };
 
-        TableDistributionService ds = new TableDistributionService() {
-            @Override public DistributionTrait distribution(int cacheId, RowType rowType) {
-                return IgniteDistributions.hash(rowType.distributionKeys());
-            }
-        };
-
-        return context(c, q, ms, ds);
+        return context(c, q, ms);
     }
 
-    private PlannerContext context(Context parent, Query query, MappingService ms, TableDistributionService ds) {
+    private PlannerContext context(Context parent, Query query, MappingService ms) {
         return PlannerContext.builder()
             .parentContext(parent)
             .logger(log)
@@ -1248,8 +1177,28 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
             .query(query)
             .schema(schema)
             .topologyVersion(AffinityTopologyVersion.NONE)
-            .distributionService(ds)
             .mappingService(ms)
             .build();
+    }
+
+    public static class TestIgniteTable extends IgniteTable {
+        private final List<Object[]> data;
+        private Object identityKey;
+        public TestIgniteTable(String tableName, String cacheName, RowType rowType, List<Object[]> data) {
+            super(tableName, cacheName, rowType, null);
+            this.data = data;
+        }
+
+        public void identityKey(Object identityKey) {
+            this.identityKey = identityKey;
+        }
+
+        @Override public Object identityKey() {
+            return identityKey;
+        }
+
+        @Override public Enumerable<Object[]> scan(DataContext root) {
+            return Linq4j.asEnumerable(data);
+        }
     }
 }

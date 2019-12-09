@@ -32,7 +32,7 @@ public class ScanNode implements SingleNode<Object[]> {
     private Iterator<Object[]> it;
     private Object[] row;
 
-    protected ScanNode(Sink<Object[]> target, Iterable<Object[]> source) {
+    public ScanNode(Sink<Object[]> target, Iterable<Object[]> source) {
         this.target = target;
         this.source = source;
     }

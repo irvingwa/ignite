@@ -19,7 +19,6 @@ package org.apache.ignite.internal.processors.query.calcite.serialize.relation;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import org.apache.calcite.linq4j.Ord;
-import org.apache.calcite.plan.Context;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptSchema;
 import org.apache.calcite.plan.RelOptTable;
@@ -29,7 +28,9 @@ import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.sql.SqlOperatorTable;
 import org.apache.calcite.tools.RelBuilder;
+import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
 import org.apache.ignite.internal.processors.query.calcite.serialize.expression.ExpToRexTranslator;
+import org.apache.ignite.internal.processors.query.calcite.util.Commons;
 import org.apache.ignite.internal.util.typedef.F;
 
 /**
@@ -58,8 +59,8 @@ public class GraphToRelConverter implements ConversionContext {
         return relBuilder.getRelOptSchema();
     }
 
-    @Override public Context getContext() {
-        return getCluster().getPlanner().getContext();
+    @Override public PlannerContext getContext() {
+        return Commons.plannerContext(getCluster().getPlanner().getContext());
     }
 
     @Override public ExpToRexTranslator getExpressionTranslator() {

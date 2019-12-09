@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Copyright 2019 GridGain Systems, Inc. and Contributors.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the GridGain Community Edition License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.gridgain.com/products/software/community-edition/gridgain-community-edition-license
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,53 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.ignite.internal.processors.query.calcite.rel;
 
 import java.util.Set;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.RelWriter;
 import org.apache.calcite.rel.core.CorrelationId;
 import org.apache.calcite.rel.core.Join;
 import org.apache.calcite.rel.core.JoinRelType;
 import org.apache.calcite.rex.RexNode;
-import org.apache.ignite.internal.processors.query.calcite.util.RelImplementor;
 
-public final class IgniteJoin extends Join implements IgniteRel {
-  private final boolean semiJoinDone;
+/**
+ *
+ */
+public class IgniteJoin extends Join implements IgniteRel {
+    public IgniteJoin(RelOptCluster cluster, RelTraitSet traitSet, RelNode left, RelNode right, RexNode condition, Set<CorrelationId> variablesSet, JoinRelType joinType) {
+        super(cluster, traitSet, left, right, condition, variablesSet, joinType);
+    }
 
-  public IgniteJoin(
-      RelOptCluster cluster,
-      RelTraitSet traitSet,
-      RelNode left,
-      RelNode right,
-      RexNode condition,
-      Set<CorrelationId> variablesSet,
-      JoinRelType joinType,
-      boolean semiJoinDone) {
-    super(cluster, traitSet, left, right, condition, variablesSet, joinType);
-    this.semiJoinDone = semiJoinDone;
-  }
+    @Override public Join copy(RelTraitSet traitSet, RexNode condition, RelNode left, RelNode right, JoinRelType joinType, boolean semiJoinDone) {
+        return new IgniteJoin(getCluster(), traitSet, left, right, condition, variablesSet, joinType);
+    }
 
-  @Override public IgniteJoin copy(RelTraitSet traitSet, RexNode conditionExpr,
-      RelNode left, RelNode right, JoinRelType joinType, boolean semiJoinDone) {
-    return new IgniteJoin(getCluster(), traitSet, left, right, conditionExpr, variablesSet, joinType, semiJoinDone);
-  }
-
-  /** {@inheritDoc} */
-  @Override public <T> T implement(RelImplementor<T> implementor) {
-    return implementor.implement(this);
-  }
-
-  @Override public RelWriter explainTerms(RelWriter pw) {
-    // Don't ever print semiJoinDone=false. This way, we
-    // don't clutter things up in optimizers that don't use semi-joins.
-    return super.explainTerms(pw)
-        .itemIf("semiJoinDone", semiJoinDone, semiJoinDone);
-  }
-
-  @Override public boolean isSemiJoinDone() {
-    return semiJoinDone;
-  }
+    @Override public <T> T implement(Implementor<T> implementor) {
+        return implementor.implement(this);
+    }
 }

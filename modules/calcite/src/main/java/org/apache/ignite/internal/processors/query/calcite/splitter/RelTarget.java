@@ -14,32 +14,16 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.query.calcite.trait;
+package org.apache.ignite.internal.processors.query.calcite.splitter;
+
+import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping;
+import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 
 /**
  *
  */
-public enum DistributionType {
-    HASH("hash"),
-    RANDOM("random"),
-    BROADCAST("broadcast"),
-    SINGLE("single"),
-    ANY("any");
-
-    /** */
-    private final String description;
-
-    /**
-     *
-     */
-    DistributionType(String description) {
-        this.description = description;
-    }
-
-    /**
-     *
-     */
-    @Override public String toString() {
-        return description;
-    }
+public interface RelTarget {
+    long exchangeId();
+    NodesMapping mapping();
+    IgniteDistribution distribution();
 }

@@ -14,23 +14,15 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.query.calcite.serialize.relation;
+package org.apache.calcite.interpreter;
 
-import org.apache.calcite.plan.RelOptSchema;
-import org.apache.calcite.plan.RelOptTable;
-import org.apache.calcite.rel.type.RelDataTypeFactory;
-import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
-import org.apache.ignite.internal.processors.query.calcite.serialize.expression.ExpToRexTranslator;
+import org.apache.calcite.DataContext;
 
 /**
  *
  */
-public interface ConversionContext extends RelOptTable.ToRelContext {
-    RelDataTypeFactory getTypeFactory();
-
-    RelOptSchema getSchema();
-
-    PlannerContext getContext();
-
-    ExpToRexTranslator getExpressionTranslator();
+public class InterpreterUtils {
+    public static Context createContext(DataContext ctx) {
+        return new Context(ctx);
+    }
 }

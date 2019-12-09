@@ -28,15 +28,15 @@ import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteSender;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteTableScan;
+import org.apache.ignite.internal.processors.query.calcite.rel.RelOp;
 import org.apache.ignite.internal.processors.query.calcite.serialize.expression.RexToExpTranslator;
 import org.apache.ignite.internal.processors.query.calcite.util.Commons;
-import org.apache.ignite.internal.processors.query.calcite.util.RelImplementor;
 import org.apache.ignite.internal.util.typedef.F;
 
 /**
  *
  */
-public class RelToGraphConverter {
+public class RelToGraphConverter implements RelOp<IgniteRel, RelGraph> {
     private final RexToExpTranslator rexTranslator = new RexToExpTranslator();
 
     private RelGraph graph;
@@ -52,7 +52,7 @@ public class RelToGraphConverter {
         }
     }
 
-    private final class Implementor implements RelImplementor<Item> {
+    private final class Implementor implements org.apache.ignite.internal.processors.query.calcite.rel.Implementor<Item> {
         @Override public Item implement(IgniteFilter rel) {
             return new Item(graph.addNode(curParent, FilterNode.create(rel, rexTranslator)), Commons.cast(rel.getInputs()));
         }
@@ -86,7 +86,7 @@ public class RelToGraphConverter {
         }
     }
 
-    public RelGraph convert(IgniteRel root) {
+    @Override public RelGraph go(IgniteRel root) {
         graph = new RelGraph();
 
         Implementor implementor = new Implementor();
@@ -99,7 +99,7 @@ public class RelToGraphConverter {
             curParent = item.parentId;
 
             for (IgniteRel child : item.children) {
-                stack.push(child.implement(implementor));
+                stack.push(implementor.go(child));
             }
         }
 
