@@ -45,8 +45,6 @@ public class ScalarFactory {
     }
 
     public <T> Predicate<T> filterPredicate(DataContext root, RexNode filter, RelDataType rowType) {
-        System.out.println("filterPredicate for" + filter);
-
         Scalar scalar = rexCompiler.compile(ImmutableList.of(filter), rowType);
         Context ctx = InterpreterUtils.createContext(root);
 
@@ -54,8 +52,6 @@ public class ScalarFactory {
     }
 
     public <T> Function<T, T> projectExpression(DataContext root, List<RexNode> projects, RelDataType rowType) {
-        System.out.println("joinExpression for" + projects);
-
         Scalar scalar = rexCompiler.compile(projects, rowType);
         Context ctx = InterpreterUtils.createContext(root);
         int count = projects.size();
@@ -64,8 +60,6 @@ public class ScalarFactory {
     }
 
     public <T> BiFunction<T, T, T> joinExpression(DataContext root, RexNode expression, RelDataType leftType, RelDataType rightType) {
-        System.out.println("joinExpression for" + expression);
-
         RelDataType rowType = combinedType(leftType, rightType);
 
         Scalar scalar = rexCompiler.compile(ImmutableList.of(expression), rowType);

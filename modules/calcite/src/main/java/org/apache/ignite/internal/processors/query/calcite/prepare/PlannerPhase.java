@@ -43,10 +43,10 @@ public enum PlannerPhase {
     OPTIMIZATION("Main optimization phase") {
         @Override public RuleSet getRules(PlannerContext ctx) {
             return RuleSets.ofList(
-                new TableScanConverter(),
-                new JoinConverter(),
-                new ProjectConverter(),
-                new FilterConverter());
+                TableScanConverter.INSTANCE,
+                JoinConverter.INSTANCE,
+                ProjectConverter.INSTANCE,
+                FilterConverter.INSTANCE);
         }
     };
 

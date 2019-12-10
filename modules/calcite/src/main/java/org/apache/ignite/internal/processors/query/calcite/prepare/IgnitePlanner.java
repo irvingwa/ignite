@@ -69,7 +69,6 @@ import org.apache.calcite.tools.Planner;
 import org.apache.calcite.tools.Program;
 import org.apache.calcite.tools.Programs;
 import org.apache.calcite.tools.RelBuilder;
-import org.apache.calcite.tools.RuleSet;
 import org.apache.calcite.tools.ValidationException;
 import org.apache.calcite.util.Pair;
 import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMetadata;
@@ -322,7 +321,6 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
         ready();
 
         RelTraitSet toTraits = targetTraits.simplify();
-        RuleSet rules = plannerPhase.getRules(Commons.plannerContext(context));
 
         input.accept(new MetaDataProviderModifier(metadataProvider));
 
@@ -332,7 +330,7 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
             case HEP:
                 final HepProgramBuilder programBuilder = new HepProgramBuilder();
 
-                for (RelOptRule rule : rules) {
+                for (RelOptRule rule : plannerPhase.getRules(Commons.plannerContext(context))) {
                     programBuilder.addRuleInstance(rule);
                 }
 
@@ -348,7 +346,7 @@ public class IgnitePlanner implements Planner, RelOptTable.ViewExpander {
 
                 break;
             case VOLCANO:
-                Program program = Programs.of(rules);
+                Program program = Programs.of(plannerPhase.getRules(Commons.plannerContext(context)));
 
                 output = program.run(planner, input, toTraits,
                     ImmutableList.of(), ImmutableList.of());

@@ -17,10 +17,10 @@
 package org.apache.ignite.internal.processors.query.calcite.rule;
 
 import java.util.List;
-import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.convert.ConverterRule;
 import org.apache.calcite.rel.logical.LogicalJoin;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMdDerivedDistribution;
@@ -29,17 +29,18 @@ import org.apache.ignite.internal.processors.query.calcite.rel.IgniteJoin;
 import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistributions;
 import org.apache.ignite.internal.processors.query.calcite.util.Commons;
-import org.apache.ignite.internal.util.typedef.F;
 
 /**
  *
  */
-public class JoinConverter extends AbstractVariableConverter {
+public class JoinConverter extends IgniteConverter {
+    public static final ConverterRule INSTANCE = new JoinConverter();
+
     public JoinConverter() {
-        super(LogicalJoin.class, Convention.NONE, IgniteConvention.INSTANCE, "JoinConverter");
+        super(LogicalJoin.class, "JoinConverter");
     }
 
-    @Override public List<RelNode> convert(RelNode rel, boolean firstOnly) {
+    @Override protected List<RelNode> convert0(RelNode rel) {
         LogicalJoin join = (LogicalJoin) rel;
 
         RelNode left = convert(join.getLeft(), IgniteConvention.INSTANCE);
@@ -53,8 +54,7 @@ public class JoinConverter extends AbstractVariableConverter {
 
         List<IgniteDistributions.BiSuggestion> suggestions = IgniteDistributions.suggestJoin(leftTraits, rightTraits, join.analyzeCondition(), join.getJoinType());
 
-        return firstOnly ? F.asList(create(join, left, right, F.first(suggestions))) :
-            Commons.transform(suggestions, s -> create(join, left, right, s));
+        return Commons.transform(suggestions, s -> create(join, left, right, s));
     }
 
     private static RelNode create(LogicalJoin join, RelNode left, RelNode right, IgniteDistributions.BiSuggestion suggest) {

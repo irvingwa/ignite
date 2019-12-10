@@ -16,26 +16,29 @@
 
 package org.apache.ignite.internal.processors.query.calcite.rule;
 
-import org.apache.calcite.plan.Convention;
+import java.util.List;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.convert.ConverterRule;
 import org.apache.calcite.rel.logical.LogicalTableScan;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteTableScan;
+import org.apache.ignite.internal.util.typedef.F;
 
 /**
  *
  */
-public class TableScanConverter extends ConverterRule {
+public class TableScanConverter extends IgniteConverter {
+    public static final ConverterRule INSTANCE = new TableScanConverter();
+
     public TableScanConverter() {
-        super(LogicalTableScan.class, Convention.NONE, IgniteConvention.INSTANCE, "TableScanConverter");
+        super(LogicalTableScan.class, "TableScanConverter");
     }
 
-    @Override public RelNode convert(RelNode rel) {
+    @Override protected List<RelNode> convert0(RelNode rel) {
         LogicalTableScan scan = (LogicalTableScan) rel;
 
         RelTraitSet traitSet = scan.getTraitSet().replace(IgniteConvention.INSTANCE);
-        return new IgniteTableScan(rel.getCluster(), traitSet, scan.getTable());
+        return F.asList(new IgniteTableScan(rel.getCluster(), traitSet, scan.getTable()));
     }
 }

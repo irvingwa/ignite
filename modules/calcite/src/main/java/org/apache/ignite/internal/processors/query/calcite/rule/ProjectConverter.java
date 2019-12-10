@@ -17,10 +17,10 @@
 package org.apache.ignite.internal.processors.query.calcite.rule;
 
 import java.util.List;
-import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.convert.ConverterRule;
 import org.apache.calcite.rel.logical.LogicalProject;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMdDerivedDistribution;
@@ -29,17 +29,18 @@ import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteProject;
 import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 import org.apache.ignite.internal.processors.query.calcite.util.Commons;
-import org.apache.ignite.internal.util.typedef.F;
 
 /**
  *
  */
-public class ProjectConverter extends AbstractVariableConverter {
+public class ProjectConverter extends IgniteConverter {
+    public static final ConverterRule INSTANCE = new ProjectConverter();
+
     public ProjectConverter() {
-        super(LogicalProject.class, Convention.NONE, IgniteConvention.INSTANCE, "ProjectConverter");
+        super(LogicalProject.class, "ProjectConverter");
     }
 
-    @Override public List<RelNode> convert(RelNode rel, boolean firstOnly) {
+    @Override protected List<RelNode> convert0(RelNode rel) {
         LogicalProject project = (LogicalProject) rel;
 
         RelNode input = convert(project.getInput(), IgniteConvention.INSTANCE);
@@ -49,8 +50,7 @@ public class ProjectConverter extends AbstractVariableConverter {
 
         List<IgniteDistribution> distrs = IgniteMdDerivedDistribution.deriveDistributions(input, IgniteConvention.INSTANCE, mq);
 
-        return firstOnly ? F.asList(create(project, input, F.first(distrs))) :
-            Commons.transform(distrs, d -> create(project, input, d));
+        return Commons.transform(distrs, d -> create(project, input, d));
     }
 
     private static IgniteProject create(LogicalProject project, RelNode input, IgniteDistribution distr) {

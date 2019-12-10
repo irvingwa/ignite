@@ -17,6 +17,7 @@
 package org.apache.ignite.internal.processors.query.calcite.rel;
 
 import org.apache.calcite.plan.Convention;
+import org.apache.calcite.plan.ConventionTraitDef;
 import org.apache.calcite.plan.RelOptPlanner;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.plan.volcano.AbstractConverter;
@@ -25,10 +26,14 @@ import org.apache.calcite.plan.volcano.AbstractConverter;
  *
  */
 public class IgniteConvention extends Convention.Impl {
-    public static final Convention INSTANCE = new IgniteConvention();
+    public static final IgniteConvention INSTANCE = new IgniteConvention();
 
     private IgniteConvention() {
         super("IGNITE", IgniteRel.class);
+    }
+
+    @Override public ConventionTraitDef getTraitDef() {
+        return ConventionTraitDef.INSTANCE;
     }
 
     @Override public void register(RelOptPlanner planner) {
@@ -36,6 +41,6 @@ public class IgniteConvention extends Convention.Impl {
     }
 
     @Override public boolean useAbstractConvertersForConversion(RelTraitSet fromTraits, RelTraitSet toTraits) {
-        return fromTraits.contains(INSTANCE) && toTraits.contains(INSTANCE);
+        return toTraits.contains(INSTANCE) && fromTraits.contains(INSTANCE);
     }
 }

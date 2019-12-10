@@ -17,10 +17,10 @@
 package org.apache.ignite.internal.processors.query.calcite.rule;
 
 import java.util.List;
-import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.convert.ConverterRule;
 import org.apache.calcite.rel.logical.LogicalFilter;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.ignite.internal.processors.query.calcite.metadata.IgniteMdDerivedDistribution;
@@ -28,17 +28,18 @@ import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteFilter;
 import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistribution;
 import org.apache.ignite.internal.processors.query.calcite.util.Commons;
-import org.apache.ignite.internal.util.typedef.F;
 
 /**
  *
  */
-public class FilterConverter extends AbstractVariableConverter {
+public class FilterConverter extends IgniteConverter {
+    public static final ConverterRule INSTANCE = new FilterConverter();
+
     public FilterConverter() {
-        super(LogicalFilter.class, Convention.NONE, IgniteConvention.INSTANCE, "FilterConverter");
+        super(LogicalFilter.class, "FilterConverter");
     }
 
-    @Override public List<RelNode> convert(RelNode rel, boolean firstOnly) {
+    @Override protected List<RelNode> convert0(RelNode rel) {
         LogicalFilter filter = (LogicalFilter) rel;
 
         RelNode input = convert(filter.getInput(), IgniteConvention.INSTANCE);
@@ -48,8 +49,7 @@ public class FilterConverter extends AbstractVariableConverter {
 
         List<IgniteDistribution> distrs = IgniteMdDerivedDistribution.deriveDistributions(input, IgniteConvention.INSTANCE, mq);
 
-        return firstOnly ? F.asList(create(filter, input, F.first(distrs))) :
-            Commons.transform(distrs, d -> create(filter, input, d));
+        return Commons.transform(distrs, d -> create(filter, input, d));
     }
 
     private static IgniteFilter create(LogicalFilter filter, RelNode input, IgniteDistribution distr) {
