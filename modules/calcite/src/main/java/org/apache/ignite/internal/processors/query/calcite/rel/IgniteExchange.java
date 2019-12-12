@@ -34,7 +34,7 @@ public class IgniteExchange extends Exchange implements IgniteRel {
         return new IgniteExchange(getCluster(), traitSet, newInput, newDistribution);
     }
 
-    @Override public <T> T implement(Implementor<T> implementor) {
-        return implementor.implement(this);
+    @Override public <T> T accept(IgniteRelVisitor<T> visitor) {
+        return visitor.visit(this);
     }
 }

@@ -19,24 +19,20 @@ package org.apache.ignite.internal.processors.query.calcite.rel;
 /**
  *
  */
-public interface Implementor<T> extends RelOp<IgniteRel, T> {
-    T implement(IgniteSender rel);
+public interface IgniteRelVisitor<T> {
+    T visit(IgniteSender rel);
 
-    T implement(IgniteFilter rel);
+    T visit(IgniteFilter rel);
 
-    T implement(IgniteProject rel);
+    T visit(IgniteProject rel);
 
-    T implement(IgniteJoin rel);
+    T visit(IgniteJoin rel);
 
-    T implement(IgniteTableScan rel);
+    T visit(IgniteTableScan rel);
 
-    T implement(IgniteReceiver rel);
+    T visit(IgniteReceiver rel);
 
-    T implement(IgniteExchange rel);
+    T visit(IgniteExchange rel);
 
-    T implement(IgniteRel other);
-
-    @Override default T go(IgniteRel rel) {
-        return rel.implement(this);
-    }
+    T visit(IgniteRel other);
 }

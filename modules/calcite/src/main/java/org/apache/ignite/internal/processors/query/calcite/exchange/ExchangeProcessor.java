@@ -24,7 +24,10 @@ import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
  *
  */
 public interface ExchangeProcessor {
-    void register(Outbox outbox);
-    void unregister(Outbox outbox);
+    <T> Outbox<T> register(Outbox<T> outbox);
+    <T> void unregister(Outbox<T> outbox);
+    Inbox register(Inbox inbox);
+    void unregister(Inbox inbox);
     void send(GridCacheVersion queryId, long exchangeId, UUID nodeId, int batchId, List<?> rows);
+    void acknowledge(GridCacheVersion queryId, long exchangeId, UUID nodeId, int batchId);
 }

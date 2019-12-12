@@ -22,5 +22,5 @@ import org.apache.calcite.rel.RelNode;
  *
  */
 public interface IgniteRel extends RelNode {
-    <T> T implement(Implementor<T> implementor);
+    <T> T accept(IgniteRelVisitor<T> visitor);
 }

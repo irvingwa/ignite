@@ -36,7 +36,7 @@ public class IgniteProject extends Project implements IgniteRel {
         return new IgniteProject(getCluster(), traitSet, input, projects, rowType);
     }
 
-    @Override public <T> T implement(Implementor<T> implementor) {
-        return implementor.implement(this);
+    @Override public <T> T accept(IgniteRelVisitor<T> visitor) {
+        return visitor.visit(this);
     }
 }

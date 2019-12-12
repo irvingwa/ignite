@@ -35,6 +35,8 @@ import org.apache.ignite.internal.processors.query.GridQueryProperty;
 import org.apache.ignite.internal.processors.query.GridQueryTypeDescriptor;
 import org.apache.ignite.internal.processors.query.QueryContext;
 import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerContext;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
 import org.apache.ignite.internal.processors.query.calcite.type.RowType;
 import org.apache.ignite.internal.util.typedef.F;
 import org.jetbrains.annotations.NotNull;
@@ -132,5 +134,12 @@ public final class Commons {
 
     public static PlannerContext plannerContext(Context ctx) {
         return Objects.requireNonNull(ctx.unwrap(PlannerContext.class));
+    }
+
+    public static IgniteRel igniteRel(RelNode rel) {
+        if (rel.getConvention() != IgniteConvention.INSTANCE)
+            throw new AssertionError("Unexpected node: " + rel);
+
+        return (IgniteRel) rel;
     }
 }

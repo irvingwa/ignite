@@ -37,7 +37,7 @@ public class IgniteJoin extends Join implements IgniteRel {
         return new IgniteJoin(getCluster(), traitSet, left, right, condition, variablesSet, joinType);
     }
 
-    @Override public <T> T implement(Implementor<T> implementor) {
-        return implementor.implement(this);
+    @Override public <T> T accept(IgniteRelVisitor<T> visitor) {
+        return visitor.visit(this);
     }
 }

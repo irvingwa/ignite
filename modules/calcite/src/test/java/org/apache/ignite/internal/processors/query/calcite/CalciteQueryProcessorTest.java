@@ -40,7 +40,7 @@ import org.apache.calcite.tools.Frameworks;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.processors.query.calcite.exec.ConsumerNode;
-import org.apache.ignite.internal.processors.query.calcite.exec.ImplementorImpl;
+import org.apache.ignite.internal.processors.query.calcite.exec.Implementor;
 import org.apache.ignite.internal.processors.query.calcite.exec.Node;
 import org.apache.ignite.internal.processors.query.calcite.metadata.MappingService;
 import org.apache.ignite.internal.processors.query.calcite.metadata.NodesMapping;
@@ -52,8 +52,6 @@ import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerPhase;
 import org.apache.ignite.internal.processors.query.calcite.prepare.PlannerType;
 import org.apache.ignite.internal.processors.query.calcite.prepare.Query;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteConvention;
-import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
-import org.apache.ignite.internal.processors.query.calcite.rel.Implementor;
 import org.apache.ignite.internal.processors.query.calcite.schema.IgniteSchema;
 import org.apache.ignite.internal.processors.query.calcite.schema.IgniteTable;
 import org.apache.ignite.internal.processors.query.calcite.serialize.expression.Expression;
@@ -65,7 +63,6 @@ import org.apache.ignite.internal.processors.query.calcite.splitter.Splitter;
 import org.apache.ignite.internal.processors.query.calcite.trait.DistributionTraitDef;
 import org.apache.ignite.internal.processors.query.calcite.trait.IgniteDistributions;
 import org.apache.ignite.internal.processors.query.calcite.type.RowType;
-import org.apache.ignite.internal.processors.query.calcite.util.Commons;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.marshaller.jdk.JdkMarshaller;
@@ -74,6 +71,8 @@ import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.apache.ignite.internal.processors.query.calcite.util.Commons.igniteRel;
 
 /**
  *
@@ -178,7 +177,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(query);
 
@@ -217,7 +216,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(query);
 
@@ -254,7 +253,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(query);
 
@@ -293,7 +292,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(query);
 
@@ -340,7 +339,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(query);
 
@@ -400,7 +399,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -433,7 +432,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
             plan.init(ctx);
 
-            RelGraph graph = new RelToGraphConverter().go((IgniteRel) plan.fragments().get(1).root());
+            RelGraph graph = new RelToGraphConverter().go(igniteRel(plan.fragments().get(1).root()));
 
             convertedBytes = new JdkMarshaller().marshal(graph);
 
@@ -481,7 +480,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -511,7 +510,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
         assertNotNull(relRoot);
 
-        QueryPlan plan = new Splitter().go((IgniteRel) relRoot.rel);
+        QueryPlan plan = new Splitter().go(igniteRel(relRoot.rel));
 
         assertNotNull(plan);
 
@@ -543,7 +542,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -569,9 +568,9 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
             Map<String, Object> params = ctx.query().params(F.asMap(ContextValue.QUERY_ID.valueName(), new GridCacheVersion()));
 
-            Implementor<Node<Object[]>> implementor = new ImplementorImpl(new DataContextImpl(params, ctx));
+            Implementor implementor = new Implementor(new DataContextImpl(params, ctx));
 
-            Node<Object[]> exec = implementor.go((IgniteRel) phys);
+            Node<Object[]> exec = implementor.go(igniteRel(phys));
 
             assertNotNull(exec);
 
@@ -634,7 +633,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -664,7 +663,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
         assertNotNull(relRoot);
 
-        QueryPlan plan = new Splitter().go((IgniteRel) relRoot.rel);
+        QueryPlan plan = new Splitter().go(igniteRel(relRoot.rel));
 
         assertNotNull(plan);
 
@@ -725,7 +724,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -755,7 +754,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
         assertNotNull(relRoot);
 
-        QueryPlan plan = new Splitter().go((IgniteRel) relRoot.rel);
+        QueryPlan plan = new Splitter().go(igniteRel(relRoot.rel));
 
         assertNotNull(plan);
 
@@ -816,7 +815,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -846,7 +845,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
         assertNotNull(relRoot);
 
-        QueryPlan plan = new Splitter().go((IgniteRel) relRoot.rel);
+        QueryPlan plan = new Splitter().go(igniteRel(relRoot.rel));
 
         assertNotNull(plan);
 
@@ -900,7 +899,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -930,7 +929,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
         assertNotNull(relRoot);
 
-        QueryPlan plan = new Splitter().go((IgniteRel) relRoot.rel);
+        QueryPlan plan = new Splitter().go(igniteRel(relRoot.rel));
 
         assertNotNull(plan);
 
@@ -991,7 +990,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -1021,7 +1020,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
         assertNotNull(relRoot);
 
-        QueryPlan plan = new Splitter().go((IgniteRel) relRoot.rel);
+        QueryPlan plan = new Splitter().go(igniteRel(relRoot.rel));
 
         assertNotNull(plan);
 
@@ -1082,7 +1081,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
         try (IgnitePlanner planner = proc.planner(traitDefs, ctx)){
             assertNotNull(planner);
 
-            Query query = Commons.plannerContext(ctx).query();
+            Query query = ctx.query();
 
             assertNotNull(planner);
 
@@ -1112,7 +1111,7 @@ public class CalciteQueryProcessorTest extends GridCommonAbstractTest {
 
         assertNotNull(relRoot);
 
-        QueryPlan plan = new Splitter().go((IgniteRel) relRoot.rel);
+        QueryPlan plan = new Splitter().go(igniteRel(relRoot.rel));
 
         assertNotNull(plan);
 

@@ -37,9 +37,9 @@ import org.apache.ignite.internal.processors.query.calcite.rel.IgniteJoin;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteProject;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRelVisitor;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteSender;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteTableScan;
-import org.apache.ignite.internal.processors.query.calcite.rel.Implementor;
 import org.apache.ignite.internal.processors.query.calcite.rel.RelOp;
 import org.apache.ignite.internal.processors.query.calcite.trait.DestinationFunction;
 import org.apache.ignite.internal.processors.query.calcite.trait.DestinationFunctionFactory;
@@ -51,13 +51,13 @@ import static org.apache.ignite.internal.processors.query.calcite.prepare.Contex
 /**
  *
  */
-public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<IgniteRel, Node<Object[]>> {
+public class Implementor implements IgniteRelVisitor<Node<Object[]>>, RelOp<IgniteRel, Node<Object[]>> {
     private final PlannerContext ctx;
     private final DataContext root;
     private final ScalarFactory factory;
     private Deque<Sink<Object[]>> stack;
 
-    public ImplementorImpl(DataContext root) {
+    public Implementor(DataContext root) {
         this.root = root;
 
         ctx = PLANNER_CONTEXT.get(root);
@@ -65,7 +65,7 @@ public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<Ignit
         stack = new ArrayDeque<>();
     }
 
-    @Override public Node<Object[]> implement(IgniteSender rel) {
+    @Override public Node<Object[]> visit(IgniteSender rel) {
         assert stack.isEmpty();
 
         GridCacheVersion id = QUERY_ID.get(root);
@@ -85,7 +85,7 @@ public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<Ignit
         return res;
     }
 
-    @Override public Node<Object[]> implement(IgniteFilter rel) {
+    @Override public Node<Object[]> visit(IgniteFilter rel) {
         assert !stack.isEmpty();
 
         FilterNode res = new FilterNode(stack.pop(), factory.filterPredicate(root, rel.getCondition(), rel.getRowType()));
@@ -97,7 +97,7 @@ public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<Ignit
         return res;
     }
 
-    @Override public Node<Object[]> implement(IgniteProject rel) {
+    @Override public Node<Object[]> visit(IgniteProject rel) {
         assert !stack.isEmpty();
 
         ProjectNode res = new ProjectNode(stack.pop(), factory.projectExpression(root, rel.getProjects(), rel.getInput().getRowType()));
@@ -109,7 +109,7 @@ public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<Ignit
         return res;
     }
 
-    @Override public Node<Object[]> implement(IgniteJoin rel) {
+    @Override public Node<Object[]> visit(IgniteJoin rel) {
         assert !stack.isEmpty();
 
         JoinNode res = new JoinNode(stack.pop(), factory.joinExpression(root, rel.getCondition(), rel.getLeft().getRowType(), rel.getRight().getRowType()));
@@ -122,7 +122,7 @@ public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<Ignit
         return res;
     }
 
-    @Override public Node<Object[]> implement(IgniteTableScan rel) {
+    @Override public Node<Object[]> visit(IgniteTableScan rel) {
         assert !stack.isEmpty();
 
         Iterable<Object[]> source = rel.getTable().unwrap(ScannableTable.class).scan(root);
@@ -130,15 +130,15 @@ public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<Ignit
         return new ScanNode(stack.pop(), source);
     }
 
-    @Override public Node<Object[]> implement(IgniteReceiver rel) {
+    @Override public Node<Object[]> visit(IgniteReceiver rel) {
         throw new AssertionError(); // TODO
     }
 
-    @Override public Node<Object[]> implement(IgniteExchange rel) {
+    @Override public Node<Object[]> visit(IgniteExchange rel) {
         throw new AssertionError();
     }
 
-    @Override public Node<Object[]> implement(IgniteRel other) {
+    @Override public Node<Object[]> visit(IgniteRel other) {
         throw new AssertionError();
     }
 
@@ -146,7 +146,7 @@ public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<Ignit
         if (rel.getConvention() != IgniteConvention.INSTANCE)
             throw new IllegalStateException("INTERPRETABLE is required.");
 
-        return ((IgniteRel) rel).implement(this);
+        return ((IgniteRel) rel).accept(this);
     }
 
     private List<Source> sources(List<RelNode> rels) {
@@ -161,7 +161,7 @@ public class ImplementorImpl implements Implementor<Node<Object[]>>, RelOp<Ignit
 
     @Override public Node<Object[]> go(IgniteRel rel) {
         if (rel instanceof IgniteSender)
-            return implement((IgniteSender) rel);
+            return visit((IgniteSender) rel);
 
         ConsumerNode res = new ConsumerNode();
 

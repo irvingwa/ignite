@@ -55,12 +55,12 @@ public class MappingServiceImpl implements MappingService {
     }
 
     @Override public NodesMapping distributed(int cacheId, AffinityTopologyVersion topVer) {
-        GridCacheContext cctx = ctx.cache().context().cacheContext(cacheId);
+        GridCacheContext<?,?> cctx = ctx.cache().context().cacheContext(cacheId);
 
         return cctx.isReplicated() ? replicatedLocation(cctx, topVer) : partitionedLocation(cctx, topVer);
     }
 
-    private NodesMapping partitionedLocation(GridCacheContext cctx, AffinityTopologyVersion topVer) {
+    private NodesMapping partitionedLocation(GridCacheContext<?,?> cctx, AffinityTopologyVersion topVer) {
         byte flags = NodesMapping.HAS_PARTITIONED_CACHES;
 
         List<List<ClusterNode>> assignments = cctx.affinity().assignments(topVer);
@@ -95,7 +95,7 @@ public class MappingServiceImpl implements MappingService {
         return new NodesMapping(null, res, flags);
     }
 
-    private NodesMapping replicatedLocation(GridCacheContext cctx, AffinityTopologyVersion topVer) {
+    private NodesMapping replicatedLocation(GridCacheContext<?,?> cctx, AffinityTopologyVersion topVer) {
         byte flags = NodesMapping.HAS_REPLICATED_CACHES;
 
         if (cctx.config().getNodeFilter() != null)

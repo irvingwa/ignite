@@ -34,7 +34,7 @@ public class IgniteFilter extends Filter implements IgniteRel {
         return new IgniteFilter(getCluster(), traitSet, input, condition);
     }
 
-    @Override public <T> T implement(Implementor<T> implementor) {
-        return implementor.implement(this);
+    @Override public <T> T accept(IgniteRelVisitor<T> visitor) {
+        return visitor.visit(this);
     }
 }

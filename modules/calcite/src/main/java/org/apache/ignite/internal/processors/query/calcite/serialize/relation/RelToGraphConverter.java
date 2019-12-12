@@ -26,6 +26,7 @@ import org.apache.ignite.internal.processors.query.calcite.rel.IgniteJoin;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteProject;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteReceiver;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRel;
+import org.apache.ignite.internal.processors.query.calcite.rel.IgniteRelVisitor;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteSender;
 import org.apache.ignite.internal.processors.query.calcite.rel.IgniteTableScan;
 import org.apache.ignite.internal.processors.query.calcite.rel.RelOp;
@@ -52,44 +53,44 @@ public class RelToGraphConverter implements RelOp<IgniteRel, RelGraph> {
         }
     }
 
-    private final class Implementor implements org.apache.ignite.internal.processors.query.calcite.rel.Implementor<Item> {
-        @Override public Item implement(IgniteFilter rel) {
+    private final class ItemTranslator implements IgniteRelVisitor<Item> {
+        @Override public Item visit(IgniteFilter rel) {
             return new Item(graph.addNode(curParent, FilterNode.create(rel, rexTranslator)), Commons.cast(rel.getInputs()));
         }
 
-        @Override public Item implement(IgniteJoin rel) {
+        @Override public Item visit(IgniteJoin rel) {
             return new Item(graph.addNode(curParent, JoinNode.create(rel, rexTranslator)), Commons.cast(rel.getInputs()));
         }
 
-        @Override public Item implement(IgniteProject rel) {
+        @Override public Item visit(IgniteProject rel) {
             return new Item(graph.addNode(curParent, ProjectNode.create(rel, rexTranslator)), Commons.cast(rel.getInputs()));
         }
 
-        @Override public Item implement(IgniteTableScan rel) {
+        @Override public Item visit(IgniteTableScan rel) {
             return new Item(graph.addNode(curParent, TableScanNode.create(rel)), Commons.cast(rel.getInputs()));
         }
 
-        @Override public Item implement(IgniteReceiver rel) {
+        @Override public Item visit(IgniteReceiver rel) {
             return new Item(graph.addNode(curParent, ReceiverNode.create(rel)), Collections.emptyList());
         }
 
-        @Override public Item implement(IgniteSender rel) {
+        @Override public Item visit(IgniteSender rel) {
             return new Item(graph.addNode(curParent, SenderNode.create(rel)), Commons.cast(rel.getInputs()));
         }
 
-        @Override public Item implement(IgniteExchange rel) {
-            throw new UnsupportedOperationException();
+        @Override public Item visit(IgniteRel rel) {
+            return rel.accept(this);
         }
 
-        @Override public Item implement(IgniteRel other) {
-            throw new AssertionError();
+        @Override public Item visit(IgniteExchange rel) {
+            throw new AssertionError("Unexpected node: " + rel);
         }
     }
 
     @Override public RelGraph go(IgniteRel root) {
         graph = new RelGraph();
 
-        Implementor implementor = new Implementor();
+        ItemTranslator itemTranslator = new ItemTranslator();
         Deque<Item> stack = new ArrayDeque<>();
         stack.push(new Item(-1, F.asList(root)));
 
@@ -99,7 +100,7 @@ public class RelToGraphConverter implements RelOp<IgniteRel, RelGraph> {
             curParent = item.parentId;
 
             for (IgniteRel child : item.children) {
-                stack.push(implementor.go(child));
+                stack.push(itemTranslator.visit(child));
             }
         }
 

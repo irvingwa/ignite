@@ -43,8 +43,8 @@ public class IgniteSender extends SingleRel implements IgniteRel {
         return new IgniteSender(getCluster(), traitSet, sole(inputs), target);
     }
 
-    @Override public <T> T implement(Implementor<T> implementor) {
-        return implementor.implement(this);
+    @Override public <T> T accept(IgniteRelVisitor<T> visitor) {
+        return visitor.visit(this);
     }
 
     public RelTarget target() {

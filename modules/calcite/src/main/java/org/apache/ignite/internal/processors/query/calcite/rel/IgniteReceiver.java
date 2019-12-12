@@ -43,8 +43,8 @@ public class IgniteReceiver extends AbstractRelNode implements IgniteRel {
         return new IgniteReceiver(getCluster(), traitSet, rowType, source);
     }
 
-    @Override public <T> T implement(Implementor<T> implementor) {
-        return implementor.implement(this);
+    @Override public <T> T accept(IgniteRelVisitor<T> visitor) {
+        return visitor.visit(this);
     }
 
     public RelSource source() {

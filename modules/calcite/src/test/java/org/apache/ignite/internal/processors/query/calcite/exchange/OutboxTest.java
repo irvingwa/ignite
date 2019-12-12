@@ -107,11 +107,13 @@ public class OutboxTest extends GridCommonAbstractTest {
         private List<?> lastBatch;
 
 
-        @Override public void register(Outbox outbox) {
+        @Override public <T> Outbox<T> register(Outbox<T> outbox) {
             registered = true;
+
+            return outbox;
         }
 
-        @Override public void unregister(Outbox outbox) {
+        @Override public <T> void unregister(Outbox<T> outbox) {
             unregistered = true;
         }
 
@@ -119,6 +121,18 @@ public class OutboxTest extends GridCommonAbstractTest {
             ids.add(batchId);
 
             lastBatch = rows;
+        }
+
+        @Override public Inbox register(Inbox inbox) {
+            throw new AssertionError();
+        }
+
+        @Override public void unregister(Inbox inbox) {
+            throw new AssertionError();
+        }
+
+        @Override public void acknowledge(GridCacheVersion queryId, long exchangeId, UUID nodeId, int batchId) {
+            throw new AssertionError();
         }
     }
 
